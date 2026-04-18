@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Dark mode (default) */
+  body.dark {
+    background-color: #0C0C0E;
+    color: #E8E6E1;
+    --text-primary: #E8E6E1;
+    --text-secondary: #B0AEA6;
+    --text-muted: #9A9A9D;
+    --text-faint: #6A6A6D;
+  }
+
+  /* Light mode */
+  body.light {
+    background-color: #FAFAF8;
+    color: #1A1A1D;
+    --text-primary: #1A1A1D;
+    --text-secondary: #4A4A4D;
+    --text-muted: #5A5A5D;
+    --text-faint: #8A8A8D;
+  }
+
+  /* Scrollbar styling for dark mode */
+  body.dark ::-webkit-scrollbar {
+    width: 6px;
+  }
+  body.dark ::-webkit-scrollbar-track {
+    background: #111113;
+  }
+  body.dark ::-webkit-scrollbar-thumb {
+    background: #2A2A2D;
+    border-radius: 3px;
+  }
+  body.dark ::-webkit-scrollbar-thumb:hover {
+    background: #3A3A3D;
+  }
+
+  /* Selection highlight */
+  body.dark ::selection {
+    background: rgba(212, 168, 67, 0.3);
+    color: #E8E6E1;
+  }
+  body.light ::selection {
+    background: rgba(139, 105, 20, 0.2);
+    color: #1A1A1D;
+  }
+}
+
+@layer components {
+  /* Gold accent button */
+  .btn-gold {
+    @apply font-body font-medium text-sm px-6 py-2.5 rounded-lg transition-all duration-150;
+    background-color: #D4A843;
+    color: #0C0C0E;
+  }
+  .btn-gold:hover {
+    background-color: #E0B84E;
+  }
+  .btn-gold:active {
+    transform: scale(0.98);
+  }
+
+  /* Outline button */
+  .btn-outline {
+    @apply font-body font-medium text-sm px-6 py-2.5 rounded-lg transition-all duration-150;
+    background: transparent;
+    border: 0.5px solid #D4A843;
+    color: #D4A843;
+  }
+  body.light .btn-outline {
+    border-color: #8B6914;
+    color: #8B6914;
+  }
+  .btn-outline:hover {
+    background: rgba(212, 168, 67, 0.08);
+  }
+
+  /* Card component */
+  .card-dark {
+    @apply rounded-xl;
+    background: #151517;
+  }
+  .card-light {
+    @apply rounded-xl border;
+    background: #FFFFFF;
+    border-color: #E8E6E1;
+  }
+
+  /* Signal badges */
+  .signal-bullish {
+    @apply text-xs px-2 py-0.5 rounded-md;
+    background: rgba(52, 199, 89, 0.12);
+    color: #34C759;
+  }
+  .signal-bearish {
+    @apply text-xs px-2 py-0.5 rounded-md;
+    background: rgba(255, 69, 58, 0.12);
+    color: #FF453A;
+  }
+  .signal-conflicting {
+    @apply text-xs px-2 py-0.5 rounded-md;
+    background: rgba(212, 168, 67, 0.12);
+    color: #D4A843;
+  }
+  .signal-neutral {
+    @apply text-xs px-2 py-0.5 rounded-md;
+    background: rgba(138, 138, 141, 0.12);
+    color: #9A9A9D;
+  }
+}

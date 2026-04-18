@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.git
+.claude
+frontend/node_modules
+frontend/dist
+*.tar.gz
+*.tar
+tests/

@@ -1,0 +1,52 @@
+version: "3.8"
+
+services:
+  # --- FastAPI Backend ---
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    depends_on:
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # --- Celery Worker (processes digest/sync/alert tasks) ---
+  celery-worker:
+    build: .
+    command: celery -A backend.jobs.celery_app worker --loglevel=info --concurrency=2
+    env_file: .env
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # --- Celery Beat (scheduler for periodic tasks) ---
+  celery-beat:
+    build: .
+    command: celery -A backend.jobs.celery_app beat --loglevel=info
+    env_file: .env
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # --- Redis (Celery broker + result backend) ---
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  redis-data:

@@ -1,0 +1,38 @@
+# SignalStack — Backend Dependencies
+# Phase 0: FastAPI skeleton, auth, Supabase client
+
+# Web framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# Settings / env management
+pydantic-settings==2.7.1
+pydantic[email]==2.10.5
+
+# HTTP client (Supabase REST, SnapTrade, data providers)
+httpx==0.28.1
+
+# JWT verification (Supabase Auth tokens)
+PyJWT==2.10.1
+
+# Encryption (SnapTrade tokens, application-level)
+cryptography==44.0.0
+
+# Job queue
+celery==5.4.0
+redis==5.2.1
+
+# Claude API (Phase 1)
+anthropic==0.42.0
+
+# Web Push notifications (Phase 1)
+pywebpush==2.0.1
+
+# Yahoo Finance (chart data, research fundamentals)
+yfinance>=0.2.36
+
+# Payments (Stripe)
+stripe>=8.0.0
+
+# Email delivery (Resend)
+resend>=2.0.0

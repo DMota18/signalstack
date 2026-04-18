@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find C:/Users/dylan/Downloads/portfolio_app_creation/signalstack -maxdepth 3 -type f -name *.sql)",
+      "Bash(grep -r price_alerts C:/Users/dylan/Downloads/portfolio_app_creation/signalstack/backend --include=*.py)",
+      "Bash(find C:/Users/dylan/Downloads/portfolio_app_creation/signalstack -type f \\\\\\(-name *.sql -o -name init* -o -name setup* \\\\\\))",
+      "Bash(grep -r holdings C:/Users/dylan/Downloads/portfolio_app_creation/signalstack/backend --include=*.py -l)",
+      "Bash(find C:/Users/dylan/Downloads/portfolio_app_creation/signalstack -maxdepth 2 -type f \\\\\\(-name *.md -o -name *.txt \\\\\\))",
+      "Bash(find C:/Users/dylan/Downloads/portfolio_app_creation/signalstack -type f -name *.sql)",
+      "Bash(xargs ls:*)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''backend/jobs/tasks.py''\\).read\\(\\)\\); print\\(''tasks.py: OK''\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''backend/services/email.py''\\).read\\(\\)\\); print\\(''email.py: OK''\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''backend/jobs/celery_app.py''\\).read\\(\\)\\); print\\(''celery_app.py: OK''\\)\")",
+      "Bash(grep -r \"push_subscriptions\\\\|websocket\\\\|real.*time\" C:/Users/dylan/Downloads/portfolio_app_creation/signalstack/backend/api --include=*.py)",
+      "Bash(grep -l \"task\\\\|status\\\\|progress\" \"C:/Users/dylan/Downloads/portfolio_app_creation/signalstack/backend/api\"/*.py)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''backend/tools/sec_edgar.py''\\).read\\(\\)\\); print\\(''sec_edgar.py: OK''\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''backend/tools/registry.py''\\).read\\(\\)\\); print\\(''registry.py: OK''\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''backend/agents/subagents.py''\\).read\\(\\)\\); print\\(''subagents.py: OK''\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''backend/api/intelligence.py''\\).read\\(\\)\\); print\\(''intelligence.py: OK''\\)\")",
+      "Bash(npx tsc:*)",
+      "Bash(python -m pytest tests/ -v --tb=short)",
+      "Bash(npx vite:*)"
+    ]
+  }
+}
