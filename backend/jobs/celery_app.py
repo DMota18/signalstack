@@ -45,8 +45,12 @@ celery_app.conf.update(
     # Task behavior
     task_acks_late=True,              # Ack after task completes (not on receive)
     task_reject_on_worker_lost=True,  # Requeue if worker crashes mid-task
-    task_soft_time_limit=300,         # 5 min soft limit (raises SoftTimeLimitExceeded)
-    task_time_limit=360,              # 6 min hard limit (kills the task)
+    # A full digest runs six sequential agent loops plus synthesis with
+    # inter-agent delays — 2-5+ minutes on a real portfolio. The limits
+    # must clear the longest legitimate run, or the worker kills digests
+    # mid-generation after the Claude spend is already incurred.
+    task_soft_time_limit=900,         # 15 min soft limit (raises SoftTimeLimitExceeded)
+    task_time_limit=960,              # 16 min hard limit (kills the task)
     worker_prefetch_multiplier=1,     # Don't prefetch — tasks are long-running
 
     # Result expiration: keep results for 24 hours (for debugging)
@@ -122,6 +126,15 @@ celery_app.conf.beat_schedule = {
         "options": {"queue": "monitor"},
     },
 
+    # --- Polymarket Catalog Sync ---
+    # Refresh the prediction-market catalog and ticker tags every 30 min.
+    # Research pages and the markets panel read from this catalog.
+    "polymarket-catalog-sync": {
+        "task": "backend.jobs.tasks.sync_polymarket_catalog",
+        "schedule": crontab(minute="5,35"),
+        "options": {"queue": "sync"},
+    },
+
     # --- Polymarket Cache Cleanup ---
     # Purge expired cache entries hourly.
     "polymarket-cache-cleanup": {
@@ -132,7 +145,11 @@ celery_app.conf.beat_schedule = {
 }
 
 # Queue routing: separate queues for different workload types
-# so a flood of price monitor checks doesn't block digest generation
+# so a flood of price monitor checks doesn't block digest generation.
+# NOTE: workers must subscribe to these queues explicitly —
+#   celery worker -Q intelligence,sync,monitor,maintenance
+# A worker started without -Q consumes only the default queue and
+# every routed task below would sit unconsumed forever.
 celery_app.conf.task_routes = {
     "backend.jobs.tasks.run_daily_digest_scan": {"queue": "intelligence"},
     "backend.jobs.tasks.run_weekly_report_scan": {"queue": "intelligence"},
@@ -145,5 +162,6 @@ celery_app.conf.task_routes = {
     "backend.jobs.tasks.refresh_earnings_calendar": {"queue": "sync"},
     "backend.jobs.tasks.run_price_monitor": {"queue": "monitor"},
     "backend.jobs.tasks.run_user_price_alert": {"queue": "intelligence"},
+    "backend.jobs.tasks.sync_polymarket_catalog": {"queue": "sync"},
     "backend.jobs.tasks.cleanup_polymarket_cache": {"queue": "maintenance"},
 }

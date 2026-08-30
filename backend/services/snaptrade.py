@@ -312,11 +312,12 @@ async def sync_user_holdings(user_id: str) -> dict:
         user_id: SignalStack user ID (UUID)
 
     Returns:
-        {"accounts_synced": int, "holdings_synced": int, "errors": [...]}
+        {"accounts_synced": int, "holdings_synced": int,
+         "synced_portfolio_ids": [...], "errors": [...]}
     """
     svc = SnapTradeService()
     db = get_service_client()
-    result = {"accounts_synced": 0, "holdings_synced": 0, "errors": []}
+    result = {"accounts_synced": 0, "holdings_synced": 0, "synced_portfolio_ids": [], "errors": []}
 
     # 1. Get the user's SnapTrade credentials from brokerage_connections
     conn_result = await db.select(
@@ -457,6 +458,7 @@ async def sync_user_holdings(user_id: str) -> dict:
                 continue
 
             result["accounts_synced"] += 1
+            result["synced_portfolio_ids"].append(portfolio_id)
 
             # 8. Upsert holdings
             for h in parsed_holdings:

@@ -60,6 +60,16 @@ class JobTracker:
 
         return self.run_id
 
+    def resume(self, run_id: str) -> None:
+        """Attach to an existing job_runs row instead of creating one.
+
+        Used by Celery retries: each retry attempt re-executes the task
+        from scratch, and without this every attempt would leave behind
+        its own permanently-'failed' row for a job that may yet succeed.
+        """
+        self.run_id = run_id
+        self.start_time = time.time()
+
     async def record_agent(
         self,
         agent_name: str,
@@ -139,12 +149,9 @@ class JobTracker:
             else:
                 status = "failed"
 
-        # Estimate cost if tokens provided but cost not
-        if tokens_used and not cost_usd:
-            # Rough estimate: $3/M input + $15/M output, assume 70/30 split
-            input_tokens = int(tokens_used * 0.7)
-            output_tokens = int(tokens_used * 0.3)
-            cost_usd = (input_tokens * 3 / 1_000_000) + (output_tokens * 15 / 1_000_000)
+        # Cost comes from the pipeline (services/cost_control.estimate_cost
+        # with the real input/output split and the model actually used) —
+        # never re-derived here with hardcoded pricing.
 
         data = {
             "status": status,

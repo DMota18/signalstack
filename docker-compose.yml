@@ -19,7 +19,7 @@ services:
   # --- Celery Worker (processes digest/sync/alert tasks) ---
   celery-worker:
     build: .
-    command: celery -A backend.jobs.celery_app worker --loglevel=info --concurrency=2
+    command: celery -A backend.jobs.celery_app worker -Q intelligence,sync,monitor,maintenance --loglevel=info --concurrency=2
     env_file: .env
     depends_on:
       - redis
