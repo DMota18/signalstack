@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
 import AlertCard from '../components/AlertCard';
@@ -35,10 +35,16 @@ function fmtIndicator(val: any, units: string): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
+const MARKET_TABS: MarketTab[] = ['news', 'earnings', 'polymarket', 'economy', 'congress', 'alerts'];
+
 export default function MarketsPage() {
   const { isDark } = useTheme();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<MarketTab>('news');
+  const location = useLocation();
+  const requestedTab = (location.state as { tab?: string } | null)?.tab;
+  const [tab, setTab] = useState<MarketTab>(
+    MARKET_TABS.includes(requestedTab as MarketTab) ? (requestedTab as MarketTab) : 'news'
+  );
 
   // News state
   const [newsMode, setNewsMode] = useState<'holdings' | 'general'>('holdings');
@@ -68,6 +74,11 @@ export default function MarketsPage() {
   const border = isDark ? '#1A1A1D' : '#E8E6E1';
   const greenColor = isDark ? '#34C759' : '#28A745';
   const redColor = isDark ? '#FF453A' : '#DC3545';
+
+  // Honor tab requests from navigation while already mounted
+  useEffect(() => {
+    if (MARKET_TABS.includes(requestedTab as MarketTab)) setTab(requestedTab as MarketTab);
+  }, [requestedTab]);
 
   // Load data per tab
   useEffect(() => { loadTab(); }, [tab, newsMode]);

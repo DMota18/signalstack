@@ -254,7 +254,7 @@ export default function PolymarketCard({ holdingTickers }: { holdingTickers: str
           <p className="text-xs font-body" style={{ color: textMuted }}>
             No active prediction markets match your {data?.tickers_searched || 0} holdings right now.
             Check the{' '}
-            <button onClick={() => navigate('/app/alerts', { state: { tab: 'polymarket' } })}
+            <button onClick={() => navigate('/app/markets', { state: { tab: 'polymarket' } })}
               className="underline" style={{ color: gold }}>
               Polymarket tab
             </button>
@@ -287,7 +287,7 @@ export default function PolymarketCard({ holdingTickers }: { holdingTickers: str
             </div>
           </div>
           <button
-            onClick={() => navigate('/app/alerts', { state: { tab: 'polymarket' } })}
+            onClick={() => navigate('/app/markets', { state: { tab: 'polymarket' } })}
             className="flex items-center gap-1 text-[10px] font-body transition-opacity hover:opacity-70"
             style={{ color: gold }}
           >

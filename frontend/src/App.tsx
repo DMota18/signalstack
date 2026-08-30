@@ -54,10 +54,10 @@ export default function App() {
         <Route path="alerts/:alertId" element={<AlertDetailPage />} />
         <Route path="settings" element={<SettingsPage />} />
 
-        {/* Backward compat — old routes redirect to new locations */}
-        <Route path="alerts" element={<Navigate to="/app/markets" replace />} />
-        <Route path="earnings" element={<Navigate to="/app/markets" replace />} />
-        <Route path="news" element={<Navigate to="/app/markets" replace />} />
+        {/* Backward compat — old routes land on the matching Markets tab */}
+        <Route path="alerts" element={<Navigate to="/app/markets" replace state={{ tab: 'alerts' }} />} />
+        <Route path="earnings" element={<Navigate to="/app/markets" replace state={{ tab: 'earnings' }} />} />
+        <Route path="news" element={<Navigate to="/app/markets" replace state={{ tab: 'news' }} />} />
       </Route>
 
       {/* Fallback */}

@@ -137,7 +137,10 @@ export default function DashboardPage() {
             </div>
 
             <div className="px-5 pb-4">
-              <button onClick={() => navigate('/app/alerts')} className="w-full text-left group">
+              <button
+                onClick={() => navigate(alerts[0]?.id ? `/app/alerts/${alerts[0].id}` : '/app/alerts')}
+                className="w-full text-left group"
+              >
                 <h2 className="font-display text-base group-hover:opacity-80 transition-all" style={{ color: textPrimary }}>
                   {alerts[0]?.title || 'Latest Intelligence'}
                 </h2>
@@ -186,7 +189,7 @@ export default function DashboardPage() {
               return (
                 <button
                   key={alert.id || i}
-                  onClick={() => navigate('/app/alerts')}
+                  onClick={() => navigate(alert.id ? `/app/alerts/${alert.id}` : '/app/alerts')}
                   className="w-full rounded-lg px-4 py-3 text-left transition-all hover:opacity-80"
                   style={{ background: surface, border: `0.5px solid ${border}` }}
                 >
