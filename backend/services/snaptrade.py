@@ -59,7 +59,7 @@ class SnapTradeService:
         method: str = "GET",
         query_params: Optional[dict] = None,
         body: Optional[dict] = None,
-    ) -> dict:
+    ) -> tuple[dict, dict]:
         """Generate HMAC-SHA256 signature for a SnapTrade API request.
         
         Returns headers dict with Signature and timestamp.

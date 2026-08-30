@@ -22,7 +22,7 @@ from typing import Optional
 from backend.config import get_settings
 from backend.tools.base import (
     ToolResult, ToolError, transient_error, validation_error,
-    business_error, classify_http_error, retry_with_backoff,
+    business_error, permission_error, classify_http_error, retry_with_backoff,
 )
 
 logger = logging.getLogger("tools.finnhub")

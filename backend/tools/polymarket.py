@@ -82,8 +82,7 @@ async def _write_cache(cache_key: str, data: dict, cache_type: str = "search", t
                 "cache_type": cache_type,
                 "ttl_seconds": ttl_seconds,
                 "fetched_at": now.isoformat(),
-                "expires_at": (now.replace(second=0) if False else
-                    datetime.fromtimestamp(now.timestamp() + ttl_seconds, tz=timezone.utc)).isoformat(),
+                "expires_at": datetime.fromtimestamp(now.timestamp() + ttl_seconds, tz=timezone.utc).isoformat(),
             },
             upsert=True,
             on_conflict="cache_key",

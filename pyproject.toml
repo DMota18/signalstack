@@ -1,3 +1,25 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, I import order, B bugbear, UP pyupgrade
+select = ["E", "W", "F", "I", "B", "UP"]
+ignore = [
+    "E501",  # long lines: prompts and tool descriptions read better unwrapped
+]
+
+[tool.ruff.lint.isort]
+# stdlib -> third-party -> local, per CLAUDE.md
+known-first-party = ["backend"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI dependency injection is call-in-default by design
+extend-immutable-calls = [
+    "fastapi.Depends", "fastapi.Query", "fastapi.Header", "fastapi.Body",
+    "fastapi.Path", "fastapi.File", "fastapi.Form", "fastapi.Cookie",
+]
