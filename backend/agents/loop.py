@@ -20,6 +20,7 @@ Three things we NEVER do:
 The correct termination signal is ALWAYS stop_reason.
 """
 
+import asyncio
 import json
 import logging
 
@@ -271,7 +272,6 @@ async def _call_claude_api(request_body: dict) -> dict:
                 # Rate limited — longer backoff for free tier
                 delay = 30 * (2 ** attempt)
                 logger.warning(f"Claude API 429, retrying in {delay}s (attempt {attempt + 1}/{retries})")
-                import asyncio
                 await asyncio.sleep(delay)
                 continue
 
@@ -279,7 +279,6 @@ async def _call_claude_api(request_body: dict) -> dict:
                 # Overloaded — back off longer
                 delay = 45 * (2 ** attempt)
                 logger.warning(f"Claude API 529 (overloaded), retrying in {delay}s")
-                import asyncio
                 await asyncio.sleep(delay)
                 continue
 
