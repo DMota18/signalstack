@@ -16,15 +16,17 @@ Endpoints:
 
 import asyncio
 import logging
+
 from fastapi import APIRouter, Depends, Query
+
 from backend.models.schemas import APIResponse
-from backend.services.auth import get_current_user, CurrentUser
+from backend.services.auth import CurrentUser, get_current_user
 from backend.services.supabase import get_anon_client
 from backend.tools.polymarket import (
-    search_polymarket_markets,
-    get_market_prices,
-    TICKER_SEARCH_TERMS,
     MACRO_SEARCH_TERMS,
+    TICKER_SEARCH_TERMS,
+    get_market_prices,
+    search_polymarket_markets,
 )
 
 logger = logging.getLogger("api.polymarket")

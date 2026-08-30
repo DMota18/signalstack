@@ -6,10 +6,12 @@ Phase 1: stores configuration. Phase 2: Celery price monitor evaluates them.
 """
 
 import logging
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
+
 from backend.models.schemas import APIResponse
-from backend.services.auth import get_current_user, CurrentUser
+from backend.services.auth import CurrentUser, get_current_user
 from backend.services.supabase import get_anon_client
 
 logger = logging.getLogger("price_alerts")

@@ -27,24 +27,21 @@ import asyncio
 import json
 import logging
 import time
-from typing import Optional
 
-from backend.services.context import UserContext, build_user_context
-from backend.services.hooks import (
-    intercept_output,
-    build_reformulation_prompt,
-    check_concentration_warnings,
-    DISCLAIMER,
-)
+from backend.agents.loop import run_agent_loop
 from backend.agents.subagents import (
-    run_sentiment_agent,
-    run_polymarket_agent,
     run_insider_agent,
     run_institutional_agent,
     run_macro_agent,
+    run_polymarket_agent,
     run_profile_agent,
+    run_sentiment_agent,
 )
-from backend.agents.loop import run_agent_loop
+from backend.services.context import build_user_context
+from backend.services.hooks import (
+    DISCLAIMER,
+    check_concentration_warnings,
+)
 
 logger = logging.getLogger("agents.coordinator")
 
@@ -141,8 +138,8 @@ SYNTHESIS_TOOL = {
 # COORDINATOR SYSTEM PROMPT (Domain 4.1)
 # ============================================================================
 
-COORDINATOR_SYSTEM = """You are the SignalStack Intelligence Coordinator. Your job is to synthesize 
-investment intelligence from multiple specialist agents and deliver a single, 
+COORDINATOR_SYSTEM = """You are the SignalStack Intelligence Coordinator. Your job is to synthesize
+investment intelligence from multiple specialist agents and deliver a single,
 coherent narrative to the user about their portfolio.
 
 RULES:
@@ -155,14 +152,14 @@ RULES:
 7. Use the produce_synthesis tool to deliver your final output in the required structured format.
 
 CONFLICTING SIGNALS EXAMPLE:
-"NVDA shows conflicting signals. Near-term sentiment is bearish on export restriction news, 
-but forward-looking indicators are bullish: Polymarket prices 73% odds of an earnings beat, 
-insiders bought $1.4M this week, and Bridgewater increased their position 15%. Earnings in 
+"NVDA shows conflicting signals. Near-term sentiment is bearish on export restriction news,
+but forward-looking indicators are bullish: Polymarket prices 73% odds of an earnings beat,
+insiders bought $1.4M this week, and Bridgewater increased their position 15%. Earnings in
 8 days. Net signal: short-term noise against bullish fundamentals."
 
 INSUFFICIENT DATA EXAMPLE:
-"MTPLF has limited signal coverage due to its Portuguese listing. Sentiment data is sparse 
-(2 articles in 30 days). No Polymarket, insider, or institutional data available for non-US 
+"MTPLF has limited signal coverage due to its Portuguese listing. Sentiment data is sparse
+(2 articles in 30 days). No Polymarket, insider, or institutional data available for non-US
 listings. Signals available: 1 of 5 dimensions."
 """
 
@@ -171,7 +168,7 @@ listings. Signals available: 1 of 5 dimensions."
 # MAIN COORDINATOR FUNCTION
 # ============================================================================
 
-async def run_coordinator(user_id: str, model_override: Optional[str] = None) -> dict:
+async def run_coordinator(user_id: str, model_override: str | None = None) -> dict:
     """Run the full intelligence pipeline for a user.
 
     Args:

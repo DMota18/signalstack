@@ -15,22 +15,21 @@ maintain the same data model.
 import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
-from typing import Optional
-from datetime import datetime, timezone
 
 from backend.models.schemas import APIResponse
-from backend.services.auth import get_current_user, CurrentUser
-from backend.services.supabase import get_service_client, get_anon_client
+from backend.services.auth import CurrentUser, get_current_user
+from backend.services.supabase import get_service_client
 
 logger = logging.getLogger("api.manual_portfolio")
 
 _price_executor = ThreadPoolExecutor(max_workers=4)
 
 
-def _fetch_price_sync(ticker: str) -> Optional[float]:
+def _fetch_price_sync(ticker: str) -> float | None:
     """Synchronous price fetch via yfinance. Runs in thread pool."""
     try:
         import yfinance as yf
@@ -49,7 +48,7 @@ def _fetch_price_sync(ticker: str) -> Optional[float]:
     return None
 
 
-async def _fetch_current_price(ticker: str) -> Optional[float]:
+async def _fetch_current_price(ticker: str) -> float | None:
     """Fetch the current price for a ticker. Runs yfinance in a thread pool to avoid blocking."""
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(_price_executor, _fetch_price_sync, ticker)
@@ -60,19 +59,19 @@ router = APIRouter(prefix="/manual-portfolio", tags=["manual-portfolio"])
 class ManualHolding(BaseModel):
     """A manually entered holding."""
     ticker: str = Field(min_length=1, max_length=10, pattern=r"^[A-Z0-9.\-]+$")
-    security_name: Optional[str] = None
+    security_name: str | None = None
     security_type: str = Field(default="equity", pattern=r"^(equity|etf|crypto|option|mutual_fund|bond|other)$")
     quantity: float = Field(gt=0)
-    avg_cost_basis: Optional[float] = None
-    current_price: Optional[float] = None
+    avg_cost_basis: float | None = None
+    current_price: float | None = None
 
 
 class ManualHoldingUpdate(BaseModel):
     """Update fields for an existing manual holding."""
-    quantity: Optional[float] = Field(None, gt=0)
-    avg_cost_basis: Optional[float] = None
-    current_price: Optional[float] = None
-    security_name: Optional[str] = None
+    quantity: float | None = Field(None, gt=0)
+    avg_cost_basis: float | None = None
+    current_price: float | None = None
+    security_name: str | None = None
 
 
 # ============================================================================
@@ -132,7 +131,7 @@ async def _ensure_manual_connection(user_id: str) -> str:
                 "connection_id": connection_id,
                 "total_value": 0,
                 "cash_balance": 0,
-                "synced_at": datetime.now(timezone.utc).isoformat(),
+                "synced_at": datetime.now(UTC).isoformat(),
             },
         )
         if port_insert["status_code"] in (200, 201):
@@ -176,7 +175,7 @@ async def _recalculate_portfolio(user_id: str, portfolio_id: str):
         table="portfolios",
         data={
             "total_value": round(total_value, 2),
-            "synced_at": datetime.now(timezone.utc).isoformat(),
+            "synced_at": datetime.now(UTC).isoformat(),
         },
         filters={"id": f"eq.{portfolio_id}"},
     )
@@ -222,7 +221,7 @@ async def add_holding(
             "current_price": current_price,
             "market_value": round(market_value, 2),
             "pct_of_portfolio": 0,  # Recalculated below
-            "synced_at": datetime.now(timezone.utc).isoformat(),
+            "synced_at": datetime.now(UTC).isoformat(),
         },
         upsert=True,
         on_conflict="portfolio_id,ticker",
@@ -278,7 +277,7 @@ async def update_holding(
         data["security_name"] = update.security_name
 
     data["market_value"] = round(qty * (price or 0), 2)
-    data["synced_at"] = datetime.now(timezone.utc).isoformat()
+    data["synced_at"] = datetime.now(UTC).isoformat()
 
     if not data:
         return APIResponse.fail(message="No fields to update", code="validation_error")
@@ -334,7 +333,7 @@ async def bulk_add_holdings(
     user: CurrentUser = Depends(get_current_user),
 ):
     """Add multiple holdings at once. Useful for initial portfolio setup.
-    
+
     Example body:
     [
       {"ticker": "NVDA", "quantity": 45, "current_price": 142.50, "security_type": "equity"},
@@ -375,7 +374,7 @@ async def bulk_add_holdings(
                 "current_price": current_price,
                 "market_value": round(market_value, 2),
                 "pct_of_portfolio": 0,
-                "synced_at": datetime.now(timezone.utc).isoformat(),
+                "synced_at": datetime.now(UTC).isoformat(),
             },
             upsert=True,
             on_conflict="portfolio_id,ticker",
@@ -428,7 +427,7 @@ async def refresh_prices(
                 data={
                     "current_price": price,
                     "market_value": mv,
-                    "synced_at": datetime.now(timezone.utc).isoformat(),
+                    "synced_at": datetime.now(UTC).isoformat(),
                 },
                 filters={"id": f"eq.{h['id']}"},
             )

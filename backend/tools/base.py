@@ -9,8 +9,7 @@ adapted for the async MCP server architecture.
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from typing import Optional, Literal
-from pydantic import BaseModel
+from typing import Literal
 
 logger = logging.getLogger("tools")
 
@@ -26,7 +25,7 @@ class ToolError:
     message: str
     is_retryable: bool
     tool_name: str
-    details: Optional[dict] = None
+    details: dict | None = None
 
     def to_dict(self) -> dict:
         result = {
@@ -41,19 +40,19 @@ class ToolError:
         return result
 
 
-def transient_error(tool_name: str, message: str, details: Optional[dict] = None) -> ToolError:
+def transient_error(tool_name: str, message: str, details: dict | None = None) -> ToolError:
     """Rate limits, timeouts, temporary API failures. Always retryable."""
     return ToolError("transient", message, True, tool_name, details)
 
-def validation_error(tool_name: str, message: str, details: Optional[dict] = None) -> ToolError:
+def validation_error(tool_name: str, message: str, details: dict | None = None) -> ToolError:
     """Bad input. NOT retryable with same input."""
     return ToolError("validation", message, False, tool_name, details)
 
-def business_error(tool_name: str, message: str, details: Optional[dict] = None) -> ToolError:
+def business_error(tool_name: str, message: str, details: dict | None = None) -> ToolError:
     """Valid operation, no useful result. NOT retryable as-is."""
     return ToolError("business", message, False, tool_name, details)
 
-def permission_error(tool_name: str, message: str, details: Optional[dict] = None) -> ToolError:
+def permission_error(tool_name: str, message: str, details: dict | None = None) -> ToolError:
     """Auth failure, tier gating, policy block."""
     return ToolError("permission", message, False, tool_name, details)
 
@@ -85,17 +84,17 @@ async def retry_with_backoff(
     tool_name: str = "",
 ):
     """Execute an async function with exponential backoff on transient failures.
-    
+
     Args:
         func: Async callable that returns (status_code, data) or raises
         max_retries: Maximum retry attempts
         base_delay: Initial delay in seconds
         max_delay: Maximum delay cap
         tool_name: For error reporting
-        
+
     Returns:
         The function's return value on success
-        
+
     Raises:
         Last exception if all retries exhausted
     """

@@ -18,11 +18,10 @@ os.environ.setdefault("ENCRYPTION_KEY", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 os.environ.setdefault("ANTHROPIC_API_KEY", "test-anthropic-key")
 os.environ.setdefault("SUPABASE_JWT_SECRET", "test-jwt-secret")
 
-import json
-import pytest
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timezone
 
+import pytest
 
 # ============================================================================
 # SAMPLE DATA FACTORIES
@@ -102,7 +101,7 @@ def make_synthesis_tool_use():
     synthesis = {
         "portfolio_summary": {
             "total_holdings": 5,
-            "analysis_timestamp": datetime.now(timezone.utc).isoformat(),
+            "analysis_timestamp": datetime.now(UTC).isoformat(),
             "signals_available": ["sentiment", "polymarket", "macro"],
             "signals_unavailable": [],
         },

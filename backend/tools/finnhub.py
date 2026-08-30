@@ -14,15 +14,20 @@ Tools:
 These tools serve the Sentiment Agent and Insider Agent subagents.
 """
 
-import httpx
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Optional
+from datetime import UTC, datetime, timedelta
+
+import httpx
 
 from backend.config import get_settings
 from backend.tools.base import (
-    ToolResult, ToolError, transient_error, validation_error,
-    business_error, permission_error, classify_http_error, retry_with_backoff,
+    ToolResult,
+    business_error,
+    classify_http_error,
+    permission_error,
+    retry_with_backoff,
+    transient_error,
+    validation_error,
 )
 
 logger = logging.getLogger("tools.finnhub")
@@ -122,7 +127,7 @@ async def get_price_data(ticker: str) -> dict:
             "open": data.get("o"),
             "previous_close": data.get("pc"),
             "timestamp": datetime.fromtimestamp(
-                data.get("t", 0), tz=timezone.utc
+                data.get("t", 0), tz=UTC
             ).isoformat() if data.get("t") else None,
         },
     ).to_dict()
@@ -174,7 +179,7 @@ async def get_news_sentiment(ticker: str, lookback_days: int = 7) -> dict:
     if not ticker:
         return validation_error(tool_name, "Ticker is required").to_dict()
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     from_date = (now - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
     to_date = now.strftime("%Y-%m-%d")
 
@@ -212,7 +217,7 @@ async def get_news_sentiment(ticker: str, lookback_days: int = 7) -> dict:
             "summary": a.get("summary", ""),
             "category": a.get("category", ""),
             "published_at": datetime.fromtimestamp(
-                a.get("datetime", 0), tz=timezone.utc
+                a.get("datetime", 0), tz=UTC
             ).isoformat() if a.get("datetime") else None,
         })
 
@@ -288,7 +293,7 @@ async def get_insider_trades(ticker: str) -> dict:
         return validation_error(tool_name, "Ticker is required").to_dict()
 
     # Finnhub insider transactions endpoint
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     from_date = (now - timedelta(days=90)).strftime("%Y-%m-%d")
     to_date = now.strftime("%Y-%m-%d")
 

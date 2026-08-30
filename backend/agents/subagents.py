@@ -16,7 +16,6 @@ Critical isolation rules:
 
 import json
 import logging
-from typing import Optional
 
 from backend.agents.loop import run_agent_loop
 from backend.tools.registry import get_schemas_for_agent
@@ -32,11 +31,11 @@ async def run_subagent(
     agent_name: str,
     system_prompt: str,
     user_message: str,
-    user_context: Optional[dict] = None,
-    tool_choice: Optional[dict] = None,
+    user_context: dict | None = None,
+    tool_choice: dict | None = None,
 ) -> dict:
     """Run a subagent with its scoped tools and isolated context.
-    
+
     Returns the parsed JSON output from the subagent, or an error dict.
     """
     tools = get_schemas_for_agent(agent_name)
@@ -132,7 +131,7 @@ sentiment_trend: "improving", "stable", "deteriorating" (based on recent vs olde
 """
 
 
-async def run_sentiment_agent(holdings: list[dict], user_context: Optional[dict] = None) -> dict:
+async def run_sentiment_agent(holdings: list[dict], user_context: dict | None = None) -> dict:
     """Run the Sentiment Agent on a list of holdings."""
     user_msg = f"""USER HOLDINGS (passed from coordinator — this is your ONLY source of holdings data):
 {json.dumps(holdings, indent=2)}
@@ -193,7 +192,7 @@ OUTPUT SCHEMA:
 async def run_polymarket_agent(
     holdings: list[dict],
     earnings_calendar: list[dict],
-    user_context: Optional[dict] = None,
+    user_context: dict | None = None,
 ) -> dict:
     """Run the Polymarket Agent on holdings + earnings calendar."""
     user_msg = f"""USER HOLDINGS (passed from coordinator):
@@ -255,7 +254,7 @@ net_insider_sentiment: "bullish" (net buyers), "bearish" (net sellers), "neutral
 """
 
 
-async def run_insider_agent(holdings: list[dict], user_context: Optional[dict] = None) -> dict:
+async def run_insider_agent(holdings: list[dict], user_context: dict | None = None) -> dict:
     """Run the Insider Agent on a list of holdings."""
     user_msg = f"""USER HOLDINGS (passed from coordinator):
 {json.dumps(holdings, indent=2)}
@@ -318,7 +317,7 @@ institutional_signal: "bullish" (many major holders / increasing), "bearish" (fe
 """
 
 
-async def run_institutional_agent(holdings: list[dict], user_context: Optional[dict] = None) -> dict:
+async def run_institutional_agent(holdings: list[dict], user_context: dict | None = None) -> dict:
     """Run the Institutional Flow Agent on a list of holdings."""
     user_msg = f"""USER HOLDINGS (passed from coordinator — this is your ONLY source of holdings data):
 {json.dumps(holdings, indent=2)}
@@ -374,8 +373,8 @@ trend: "rising", "falling", "stable"
 
 async def run_macro_agent(
     holdings: list[dict],
-    sector_mapping: Optional[dict] = None,
-    user_context: Optional[dict] = None,
+    sector_mapping: dict | None = None,
+    user_context: dict | None = None,
 ) -> dict:
     """Run the Macro Agent on holdings with sector context."""
     sectors = sector_mapping or {}
@@ -435,7 +434,7 @@ risk_level: "conservative", "moderate", "growth", "aggressive"
 async def run_profile_agent(
     holdings: list[dict],
     preferences: dict,
-    user_context: Optional[dict] = None,
+    user_context: dict | None = None,
 ) -> dict:
     """Run the Profile Agent with holdings and investor preferences."""
     user_msg = f"""USER HOLDINGS (passed from coordinator):

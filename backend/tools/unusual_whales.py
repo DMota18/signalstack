@@ -10,13 +10,19 @@ Tools:
   get_options_flow — Unusual options activity for a ticker
 """
 
-import httpx
 import logging
-from backend.tools.base import (
-    ToolResult, transient_error, validation_error,
-    business_error, permission_error, retry_with_backoff,
-)
+
+import httpx
+
 from backend.config import get_settings
+from backend.tools.base import (
+    ToolResult,
+    business_error,
+    permission_error,
+    retry_with_backoff,
+    transient_error,
+    validation_error,
+)
 
 logger = logging.getLogger("tools.unusual_whales")
 

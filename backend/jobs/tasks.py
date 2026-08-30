@@ -22,10 +22,11 @@ Session state rule (Domain 1.6):
 
 import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
+
 from backend.jobs.celery_app import celery_app
-from backend.services.supabase import get_service_client
 from backend.jobs.tracker import JobTracker
+from backend.services.supabase import get_service_client
 
 logger = logging.getLogger("tasks")
 
@@ -47,7 +48,7 @@ def run_async(coro):
 @celery_app.task(name="backend.jobs.tasks.run_daily_digest_scan")
 def run_daily_digest_scan():
     """Scan for users who should receive their daily digest NOW.
-    
+
     Runs every hour from 4-10 PM UTC. Checks each user's timezone
     to see if it's their preferred delivery hour (default: 5 PM local).
     Only selects pro and premium users (free tier gets email-only digest
@@ -70,7 +71,7 @@ async def _daily_digest_scan():
         logger.error(f"Daily digest scan failed: {result}")
         return
 
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     dispatched = 0
 
     for user in result["data"]:
@@ -97,14 +98,14 @@ async def _daily_digest_scan():
 )
 def run_user_digest(self, user_id: str):
     """Generate and deliver the daily digest for a single user.
-    
+
     Pipeline (Domain 1.5 — fixed sequential):
       1. Build fresh UserContext (never resume stale session)
       2. Run all 5 signal agents in parallel
       3. Coordinator synthesizes
       4. Format per delivery channel
       5. Send (push + in-app, email for pro; all for premium)
-    
+
     This is a stub — the actual intelligence pipeline is built in Phase 1.
     The structure is here so the scheduling infrastructure is complete.
     """
@@ -116,9 +117,9 @@ async def _user_digest(task, user_id: str):
     await tracker.start()
 
     try:
-        from backend.services.pipeline import generate_intelligence, format_for_push, format_for_email
+        from backend.services.email import build_digest_email_html, send_email_to_user
+        from backend.services.pipeline import format_for_push, generate_intelligence
         from backend.services.push import send_push_to_user
-        from backend.services.email import send_email_to_user, build_digest_email_html
 
         result = await generate_intelligence(
             user_id=user_id,
@@ -168,11 +169,11 @@ async def _user_digest(task, user_id: str):
         )
 
         # Update alert with actual delivery channels
-        channels_sent = {"in_app": {"created_at": datetime.now(timezone.utc).isoformat()}}
+        channels_sent = {"in_app": {"created_at": datetime.now(UTC).isoformat()}}
         if push_result.get("sent", 0) > 0:
-            channels_sent["push"] = {"created_at": datetime.now(timezone.utc).isoformat(), "devices": push_result["sent"]}
+            channels_sent["push"] = {"created_at": datetime.now(UTC).isoformat(), "devices": push_result["sent"]}
         if email_result.get("sent"):
-            channels_sent["email"] = {"created_at": datetime.now(timezone.utc).isoformat()}
+            channels_sent["email"] = {"created_at": datetime.now(UTC).isoformat()}
 
         if result.get("alert_id"):
             await db.update(
@@ -197,7 +198,7 @@ async def _user_digest(task, user_id: str):
     except Exception as e:
         logger.error(f"Daily digest failed for {user_id}: {e}")
         await tracker.fail(str(e), "transient")
-        raise task.retry(exc=e)
+        raise task.retry(exc=e) from e
 
 
 # ============================================================================
@@ -223,7 +224,7 @@ async def _weekly_report_scan():
         logger.error(f"Weekly report scan failed: {result}")
         return
 
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     dispatched = 0
 
     for user in result["data"]:
@@ -263,9 +264,9 @@ async def _user_weekly_report(task, user_id: str):
     await tracker.start()
 
     try:
-        from backend.services.pipeline import generate_intelligence, format_for_push
+        from backend.services.email import build_weekly_email_html, send_email_to_user
+        from backend.services.pipeline import format_for_push, generate_intelligence
         from backend.services.push import send_push_to_user
-        from backend.services.email import send_email_to_user, build_weekly_email_html
 
         result = await generate_intelligence(
             user_id=user_id,
@@ -316,11 +317,11 @@ async def _user_weekly_report(task, user_id: str):
         )
 
         # Update alert with actual delivery channels
-        channels_sent = {"in_app": {"created_at": datetime.now(timezone.utc).isoformat()}}
+        channels_sent = {"in_app": {"created_at": datetime.now(UTC).isoformat()}}
         if push_result.get("sent", 0) > 0:
-            channels_sent["push"] = {"created_at": datetime.now(timezone.utc).isoformat(), "devices": push_result["sent"]}
+            channels_sent["push"] = {"created_at": datetime.now(UTC).isoformat(), "devices": push_result["sent"]}
         if email_result.get("sent"):
-            channels_sent["email"] = {"created_at": datetime.now(timezone.utc).isoformat()}
+            channels_sent["email"] = {"created_at": datetime.now(UTC).isoformat()}
 
         if result.get("alert_id"):
             await db.update(
@@ -345,7 +346,7 @@ async def _user_weekly_report(task, user_id: str):
     except Exception as e:
         logger.error(f"Weekly report failed for {user_id}: {e}")
         await tracker.fail(str(e), "transient")
-        raise task.retry(exc=e)
+        raise task.retry(exc=e) from e
 
 
 # ============================================================================
@@ -442,7 +443,7 @@ async def _sync_user_portfolio(task, user_id: str, connection_id: str):
     except Exception as e:
         logger.error(f"Portfolio sync failed for {user_id}: {e}")
         await tracker.fail(str(e), "transient")
-        raise task.retry(exc=e)
+        raise task.retry(exc=e) from e
 
 
 # ============================================================================
@@ -481,8 +482,8 @@ async def _refresh_earnings_calendar():
     # so one call gets all upcoming earnings. We then filter to our tickers.
     from backend.tools.finnhub import _finnhub_request
 
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    future = (datetime.now(timezone.utc) + timedelta(days=60)).strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    future = (datetime.now(UTC) + timedelta(days=60)).strftime("%Y-%m-%d")
 
     api_result = await _finnhub_request(
         "/calendar/earnings",
@@ -560,8 +561,8 @@ async def _pre_earnings_scan():
     # PostgREST filters go into query params via a dict, so we can't use
     # two "report_date" keys. Fetch all unbriefed entries and filter in Python
     # (the earnings_calendar table is small — dozens of rows at most).
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    cutoff = (datetime.now(timezone.utc) + timedelta(days=5)).strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    cutoff = (datetime.now(UTC) + timedelta(days=5)).strftime("%Y-%m-%d")
 
     earnings_result = await db.select(
         table="earnings_calendar",
@@ -646,9 +647,9 @@ async def _user_earnings_briefing(task, user_id: str, tickers: list[str], earnin
     await tracker.start()
 
     try:
-        from backend.services.pipeline import generate_intelligence, format_for_push
+        from backend.services.email import build_earnings_briefing_email_html, send_email_to_user
+        from backend.services.pipeline import generate_intelligence
         from backend.services.push import send_push_to_user
-        from backend.services.email import send_email_to_user, build_earnings_briefing_email_html
 
         result = await generate_intelligence(
             user_id=user_id,
@@ -716,11 +717,11 @@ async def _user_earnings_briefing(task, user_id: str, tickers: list[str], earnin
         )
 
         # Update alert with delivery channels
-        channels_sent = {"in_app": {"created_at": datetime.now(timezone.utc).isoformat()}}
+        channels_sent = {"in_app": {"created_at": datetime.now(UTC).isoformat()}}
         if push_result.get("sent", 0) > 0:
-            channels_sent["push"] = {"created_at": datetime.now(timezone.utc).isoformat(), "devices": push_result["sent"]}
+            channels_sent["push"] = {"created_at": datetime.now(UTC).isoformat(), "devices": push_result["sent"]}
         if email_result.get("sent"):
-            channels_sent["email"] = {"created_at": datetime.now(timezone.utc).isoformat()}
+            channels_sent["email"] = {"created_at": datetime.now(UTC).isoformat()}
 
         if result.get("alert_id"):
             await db.update(
@@ -755,7 +756,7 @@ async def _user_earnings_briefing(task, user_id: str, tickers: list[str], earnin
     except Exception as e:
         logger.error(f"Earnings briefing failed for {user_id}: {e}")
         await tracker.fail(str(e), "transient")
-        raise task.retry(exc=e)
+        raise task.retry(exc=e) from e
 
 
 # ============================================================================
@@ -765,14 +766,14 @@ async def _user_earnings_briefing(task, user_id: str, tickers: list[str], earnin
 @celery_app.task(name="backend.jobs.tasks.run_price_monitor")
 def run_price_monitor():
     """Check for significant price movements (>3%) across all tracked tickers.
-    
+
     Runs every 5 minutes during market hours. When a move is detected,
     dispatches a "why is this moving?" alert for affected users.
-    
+
     Dynamic decomposition (Domain 1.5): The coordinator determines which
     signal dimensions are relevant to the move, spawns only those subagents,
     synthesizes, and sends the alert if the threshold is met.
-    
+
     Stub — implemented in Phase 2.
     """
     run_async(_price_monitor())
@@ -789,12 +790,13 @@ async def _price_monitor():
     5. Mark triggered alerts (update triggered_at) to avoid re-firing
     """
     import asyncio as _asyncio
+
     from backend.tools.finnhub import get_price_data
 
     db = get_service_client()
 
     # 1. Get all enabled price alerts that haven't been triggered today
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
     alerts_result = await db.select(
         table="price_alerts",
         columns="id,user_id,ticker,threshold_pct,direction,enabled,triggered_at",
@@ -840,7 +842,7 @@ async def _price_monitor():
             return_exceptions=True,
         )
 
-        for ticker, result in zip(batch, results):
+        for ticker, result in zip(batch, results, strict=True):
             if isinstance(result, Exception):
                 logger.warning(f"Price monitor: failed to fetch {ticker}: {result}")
                 continue
@@ -913,7 +915,7 @@ async def _price_monitor():
     logger.info(f"Price monitor: dispatched {dispatched} user alert tasks")
 
     # 5. Mark triggered alerts (update triggered_at)
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = datetime.now(UTC).isoformat()
     for t in triggered:
         await db.update(
             table="price_alerts",
@@ -952,9 +954,9 @@ async def _user_price_alert(task, user_id: str, tickers: list[str], trigger_data
     await tracker.start()
 
     try:
-        from backend.services.pipeline import generate_intelligence, format_for_push
+        from backend.services.email import build_price_alert_email_html, send_email_to_user
+        from backend.services.pipeline import generate_intelligence
         from backend.services.push import send_push_to_user
-        from backend.services.email import send_email_to_user, build_price_alert_email_html
 
         result = await generate_intelligence(
             user_id=user_id,
@@ -1025,11 +1027,11 @@ async def _user_price_alert(task, user_id: str, tickers: list[str], trigger_data
         )
 
         # Update alert with delivery channels
-        channels_sent = {"in_app": {"created_at": datetime.now(timezone.utc).isoformat()}}
+        channels_sent = {"in_app": {"created_at": datetime.now(UTC).isoformat()}}
         if push_result.get("sent", 0) > 0:
-            channels_sent["push"] = {"created_at": datetime.now(timezone.utc).isoformat(), "devices": push_result["sent"]}
+            channels_sent["push"] = {"created_at": datetime.now(UTC).isoformat(), "devices": push_result["sent"]}
         if email_result.get("sent"):
-            channels_sent["email"] = {"created_at": datetime.now(timezone.utc).isoformat()}
+            channels_sent["email"] = {"created_at": datetime.now(UTC).isoformat()}
 
         if result.get("alert_id"):
             await db.update(
@@ -1053,7 +1055,7 @@ async def _user_price_alert(task, user_id: str, tickers: list[str], trigger_data
     except Exception as e:
         logger.error(f"Price alert failed for {user_id}: {e}")
         await tracker.fail(str(e), "transient")
-        raise task.retry(exc=e)
+        raise task.retry(exc=e) from e
 
 
 # ============================================================================
@@ -1089,7 +1091,7 @@ def cleanup_polymarket_cache():
 async def _cleanup_polymarket_cache():
     db = get_service_client()
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     result = await db.delete(
         table="polymarket_cache",
         filters={"expires_at": f"lt.{now}"},
@@ -1109,7 +1111,7 @@ async def _cleanup_polymarket_cache():
 
 def _is_delivery_hour(now_utc: datetime, user_tz: str, target_hour: int) -> bool:
     """Check if the current UTC time corresponds to target_hour in the user's timezone.
-    
+
     Uses a simple offset lookup rather than pytz/zoneinfo to keep the
     dependency light. Covers the major US + international timezones.
     For production, swap to zoneinfo (Python 3.9+).
@@ -1146,7 +1148,7 @@ async def _cleanup_stale_holdings(user_id: str) -> int:
     """
     db = get_service_client()
 
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+    cutoff = (datetime.now(UTC) - timedelta(hours=2)).isoformat()
 
     result = await db.delete(
         table="holdings",
@@ -1164,7 +1166,7 @@ async def _cleanup_stale_holdings(user_id: str) -> int:
 async def _digest_sent_today(user_id: str, alert_type: str) -> bool:
     """Check if a digest/report of the given type was already sent today."""
     db = get_service_client()
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
 
     result = await db.select(
         table="alert_history",

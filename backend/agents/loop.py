@@ -21,19 +21,16 @@ The correct termination signal is ALWAYS stop_reason.
 """
 
 import json
-import time
 import logging
-from typing import Optional
-from datetime import datetime, timezone
 
 import httpx
 
 from backend.config import get_settings
-from backend.tools.registry import execute_tool
 from backend.services.hooks import (
-    pre_execution_hook,
     post_execution_hook,
+    pre_execution_hook,
 )
+from backend.tools.registry import execute_tool
 
 logger = logging.getLogger("agents.loop")
 
@@ -45,13 +42,13 @@ async def run_agent_loop(
     system_prompt: str,
     messages: list[dict],
     tools: list[dict],
-    user_context: Optional[dict] = None,
-    model: Optional[str] = None,
+    user_context: dict | None = None,
+    model: str | None = None,
     max_tokens: int = 4096,
-    tool_choice: Optional[dict] = None,
+    tool_choice: dict | None = None,
 ) -> dict:
     """Run the agentic loop until Claude emits stop_reason == 'end_turn'.
-    
+
     Args:
         system_prompt: System prompt for Claude
         messages: Conversation history (list of role/content dicts)
@@ -60,7 +57,7 @@ async def run_agent_loop(
         model: Claude model to use (defaults to config)
         max_tokens: Max tokens per response
         tool_choice: Optional tool_choice override for first iteration
-        
+
     Returns:
         {
             "text": str,           # Final text response (if any)

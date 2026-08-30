@@ -4,8 +4,9 @@ Loads environment variables and provides typed settings.
 All secrets come from .env — never hardcoded.
 """
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -94,7 +95,7 @@ class Settings(BaseSettings):
     claude_fallback_model: str = "claude-haiku-4-5-20251001"
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """Cached settings instance. Call this instead of constructing Settings() directly."""
     return Settings()

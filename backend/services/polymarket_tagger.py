@@ -14,10 +14,9 @@ Tagging strategy:
   4. Crypto keywords: "Bitcoin" → BTC-USD, MSTR, COIN
 """
 
-import re
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+import re
+from datetime import UTC, datetime
 
 import httpx
 
@@ -338,7 +337,7 @@ def _tag_event(event: dict) -> list[dict]:
 
     # Build tag rows — one per market per ticker
     tags = []
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     if markets:
         for m in markets:
@@ -358,7 +357,6 @@ def _tag_event(event: dict) -> list[dict]:
             if yes_price is not None and (yes_price >= 0.999 or yes_price <= 0.001):
                 continue
 
-            slug = m.get("slug") or event_slug
             polymarket_url = f"https://polymarket.com/event/{event_slug}" if event_slug else ""
 
             for ticker in matched_tickers:
@@ -407,7 +405,7 @@ def _tag_event(event: dict) -> list[dict]:
     return tags
 
 
-def _parse_price(market: dict, side: str) -> Optional[float]:
+def _parse_price(market: dict, side: str) -> float | None:
     """Parse a yes/no price from a market dict."""
     # Try outcomePrices first (array format)
     outcome_prices = market.get("outcomePrices")

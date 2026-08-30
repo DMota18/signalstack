@@ -4,6 +4,7 @@ Prompts for the average cost basis of each holding that has none set.
 Run: python -m scripts.update_cost_basis
 """
 import asyncio
+
 from backend.services.supabase import get_service_client
 
 

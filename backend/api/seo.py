@@ -12,7 +12,8 @@ The sitemap includes:
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Response
 
 from backend.services.supabase import get_service_client
@@ -66,7 +67,7 @@ async def sitemap():
             if w.get("ticker"):
                 tickers_set.add(w["ticker"].upper())
 
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
 
     # Build XML
     urls = []

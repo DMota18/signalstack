@@ -13,8 +13,7 @@ Tables:
 """
 
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from backend.config import get_settings
 from backend.services.supabase import get_service_client
@@ -61,7 +60,7 @@ async def get_daily_spend(user_id: str) -> dict:
     cap = settings.claude_daily_cost_cap_usd
     db = get_service_client()
 
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
 
     result = await db.select(
         table="user_daily_costs",
@@ -108,7 +107,7 @@ async def record_job_cost(
     settings = get_settings()
     cap = settings.claude_daily_cost_cap_usd
 
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
 
     # Try to fetch existing row
     existing = await db.select(
@@ -135,7 +134,7 @@ async def record_job_cost(
 
         # Mark cap hit if exceeded
         if new_cost >= cap and not row.get("cap_hit_at"):
-            update_data["cap_hit_at"] = datetime.now(timezone.utc).isoformat()
+            update_data["cap_hit_at"] = datetime.now(UTC).isoformat()
             logger.warning(f"User {user_id} hit daily cost cap: ${new_cost:.4f} >= ${cap}")
 
         await db.update(
@@ -153,7 +152,7 @@ async def record_job_cost(
                 "total_tokens": tokens_used,
                 "total_cost_usd": round(cost_usd, 4),
                 "job_count": 1,
-                "cap_hit_at": datetime.now(timezone.utc).isoformat() if cost_usd >= cap else None,
+                "cap_hit_at": datetime.now(UTC).isoformat() if cost_usd >= cap else None,
             },
         )
 
@@ -206,7 +205,7 @@ async def select_model_for_user(user_id: str) -> dict:
     }
 
 
-async def get_cached_intelligence(user_id: str) -> Optional[dict]:
+async def get_cached_intelligence(user_id: str) -> dict | None:
     """Get the most recent intelligence alert for the user as a fallback.
 
     Returns the most recent alert body_json, or None if no cached intelligence.

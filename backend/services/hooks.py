@@ -27,12 +27,10 @@ compliance, or user-facing alerts → programmatic enforcement.
 If it's tone, formatting, or depth → prompt guidance is acceptable.
 """
 
-import re
-import json
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+import re
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 logger = logging.getLogger("hooks")
 
@@ -45,9 +43,9 @@ logger = logging.getLogger("hooks")
 class HookResult:
     """Result of a hook execution."""
     allowed: bool = True           # For pre-hooks: whether the call proceeds
-    modified_input: Optional[dict] = None   # For pre-hooks: modified tool input
-    modified_result: Optional[dict] = None  # For post-hooks: modified tool result
-    block_reason: Optional[str] = None      # For pre-hooks: why blocked
+    modified_input: dict | None = None   # For pre-hooks: modified tool input
+    modified_result: dict | None = None  # For post-hooks: modified tool result
+    block_reason: str | None = None      # For pre-hooks: why blocked
     warnings: list[str] = None     # Non-blocking warnings to surface
 
     def __post_init__(self):
@@ -79,11 +77,11 @@ PROFILE_REQUIRED_TOOLS = frozenset({
 async def pre_execution_hook(
     tool_name: str,
     tool_input: dict,
-    user_context: Optional[dict] = None,
+    user_context: dict | None = None,
 ) -> HookResult:
     """Run before a tool executes. Returns HookResult indicating
     whether the call should proceed.
-    
+
     Args:
         tool_name: The tool being called
         tool_input: The input parameters
@@ -155,7 +153,7 @@ async def pre_execution_hook(
 
 async def post_execution_hook(tool_name: str, tool_result: dict) -> dict:
     """Run after a tool executes, before Claude processes the result.
-    
+
     Applies all normalization and compliance injection in sequence.
     Returns the modified result.
     """
@@ -174,7 +172,7 @@ async def post_execution_hook(tool_name: str, tool_result: dict) -> dict:
     result["_compliance"] = {
         "disclaimer_required": True,
         "advice_flag": False,
-        "processed_at": datetime.now(timezone.utc).isoformat(),
+        "processed_at": datetime.now(UTC).isoformat(),
     }
 
     return result
@@ -190,12 +188,12 @@ def _normalize_timestamps(data: dict) -> dict:
             val = data[key]
             if isinstance(val, (int, float)):
                 # Unix timestamp
-                data[key] = datetime.fromtimestamp(val, tz=timezone.utc).isoformat()
+                data[key] = datetime.fromtimestamp(val, tz=UTC).isoformat()
             elif isinstance(val, str) and not val.endswith("Z") and "T" not in val:
                 # Try common date formats
                 for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%Y-%m-%d %H:%M:%S"):
                     try:
-                        parsed = datetime.strptime(val, fmt).replace(tzinfo=timezone.utc)
+                        parsed = datetime.strptime(val, fmt).replace(tzinfo=UTC)
                         data[key] = parsed.isoformat()
                         break
                     except ValueError:
@@ -293,7 +291,7 @@ _ADVICE_PATTERNS = re.compile(
 
 def intercept_output(output_text: str) -> tuple[bool, str, list[str]]:
     """Final interceptor for coordinator output before delivery to user.
-    
+
     Returns:
         (passed, output_text, violations)
         - passed: True if output is safe to deliver
@@ -322,7 +320,7 @@ def intercept_output(output_text: str) -> tuple[bool, str, list[str]]:
 def build_reformulation_prompt(original_output: str, violations: list[str]) -> str:
     """Build a prompt to send back to the coordinator when output
     fails the advice language filter.
-    
+
     The coordinator receives this and must reformulate its output
     without the flagged language.
     """
@@ -348,7 +346,7 @@ def _has_disclaimer(text: str) -> bool:
 def check_concentration_warnings(holdings: list[dict]) -> list[str]:
     """Check for position concentration exceeding 25% threshold.
     Compliance guardrail #4: enforced programmatically, not by the model.
-    
+
     Returns list of warning strings to include in output.
     """
     warnings = []

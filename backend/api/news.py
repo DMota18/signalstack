@@ -11,13 +11,15 @@ Endpoints:
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, Query
+
 from backend.models.schemas import APIResponse
-from backend.services.auth import get_current_user, CurrentUser
+from backend.services.auth import CurrentUser, get_current_user
 from backend.services.supabase import get_anon_client
 from backend.tools.finnhub import get_news_sentiment
-from backend.tools.fred import get_fred_data, get_economic_calendar
+from backend.tools.fred import get_economic_calendar, get_fred_data
 
 logger = logging.getLogger("api.news")
 
@@ -85,9 +87,10 @@ async def market_news(
     user: CurrentUser = Depends(get_current_user),
 ):
     """Fetch general market news from Finnhub's /news endpoint (no ticker needed)."""
+
     import httpx
+
     from backend.config import get_settings
-    from datetime import timedelta
 
     settings = get_settings()
 
@@ -120,7 +123,7 @@ async def market_news(
                 "summary": a.get("summary", ""),
                 "category": a.get("category", ""),
                 "published_at": datetime.fromtimestamp(
-                    a.get("datetime", 0), tz=timezone.utc
+                    a.get("datetime", 0), tz=UTC
                 ).isoformat() if a.get("datetime") else None,
             })
 
@@ -191,5 +194,5 @@ async def economy_data(
     return APIResponse.success({
         "indicators": indicators,
         "calendar": calendar[:10],
-        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "fetched_at": datetime.now(UTC).isoformat(),
     })

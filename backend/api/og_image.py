@@ -16,13 +16,14 @@ Endpoint:
 
 import asyncio
 import logging
+
 from fastapi import APIRouter, Response
 
 from backend.api.research import (
+    QUOTE_CACHE_TTL,
     _fetch_yf_fundamentals,
     _get_cached,
     _set_cached,
-    QUOTE_CACHE_TTL,
 )
 
 logger = logging.getLogger("api.og_image")

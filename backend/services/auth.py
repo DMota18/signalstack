@@ -8,14 +8,15 @@ or ES256 (asymmetric, verified with JWKS public keys). This implementation
 supports both by trying JWKS first, then falling back to HS256.
 """
 
-import jwt
-import time
 import logging
-from jwt import PyJWKClient
+import time
+
+import jwt
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jwt import PyJWKClient
 from pydantic import BaseModel
-from typing import Optional
+
 from backend.config import get_settings
 from backend.services.supabase import get_service_client
 
@@ -23,7 +24,7 @@ logger = logging.getLogger("services.auth")
 
 security = HTTPBearer()
 
-_jwks_client: Optional[PyJWKClient] = None
+_jwks_client: PyJWKClient | None = None
 _jwks_last_refresh: float = 0
 JWKS_CACHE_TTL = 3600
 
@@ -79,18 +80,18 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token expired. Use /auth/refresh to get a new token.",
-        )
+        ) from None
     except jwt.InvalidTokenError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid token: {e}",
-        )
+        ) from e
     except Exception as e:
         logger.error(f"Token verification failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Token verification failed: {e}",
-        )
+        ) from e
 
     user_id = payload.get("sub")
     email = payload.get("email", "")

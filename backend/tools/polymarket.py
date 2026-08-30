@@ -16,16 +16,19 @@ Outcome prices directly equal implied probabilities:
   yes_price = 0.73 means 73% implied probability.
 """
 
-import httpx
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
-from backend.config import get_settings
+import httpx
+
 from backend.services.supabase import get_service_client
 from backend.tools.base import (
-    ToolResult, transient_error, validation_error,
-    business_error, classify_http_error, retry_with_backoff,
+    ToolResult,
+    business_error,
+    classify_http_error,
+    retry_with_backoff,
+    transient_error,
+    validation_error,
 )
 
 logger = logging.getLogger("tools.polymarket")
@@ -50,7 +53,7 @@ async def _gamma_request(endpoint: str, params: dict, tool_name: str) -> dict:
         return transient_error(tool_name, f"Polymarket request failed: {e}").to_dict()
 
 
-async def _check_cache(cache_key: str, tool_name: str) -> Optional[dict]:
+async def _check_cache(cache_key: str, tool_name: str) -> dict | None:
     """Check the polymarket_cache table for a valid cached result."""
     db = get_service_client()
     try:
@@ -62,7 +65,7 @@ async def _check_cache(cache_key: str, tool_name: str) -> Optional[dict]:
         )
         if result["status_code"] == 200 and isinstance(result["data"], dict):
             expires = result["data"].get("expires_at", "")
-            if expires and expires > datetime.now(timezone.utc).isoformat():
+            if expires and expires > datetime.now(UTC).isoformat():
                 return result["data"]["market_data"]
     except Exception as e:
         logger.debug(f"Cache lookup failed for {cache_key}: {e}")
@@ -72,7 +75,7 @@ async def _check_cache(cache_key: str, tool_name: str) -> Optional[dict]:
 async def _write_cache(cache_key: str, data: dict, cache_type: str = "search", ttl_seconds: int = 900):
     """Write a result to the polymarket_cache table."""
     db = get_service_client()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     try:
         await db.insert(
             table="polymarket_cache",
@@ -82,7 +85,7 @@ async def _write_cache(cache_key: str, data: dict, cache_type: str = "search", t
                 "cache_type": cache_type,
                 "ttl_seconds": ttl_seconds,
                 "fetched_at": now.isoformat(),
-                "expires_at": datetime.fromtimestamp(now.timestamp() + ttl_seconds, tz=timezone.utc).isoformat(),
+                "expires_at": datetime.fromtimestamp(now.timestamp() + ttl_seconds, tz=UTC).isoformat(),
             },
             upsert=True,
             on_conflict="cache_key",
@@ -127,9 +130,9 @@ _FINANCE_KEYWORDS = {
     # AI models (relevant to tech stocks)
     "best ai model", "#1 ai model", "ai model",
     # IPO
-    "spacex", "ipo", "public ticker", "list on",
+    "spacex", "public ticker", "list on",
     # Specific events
-    "microstrategy", "satoshi",
+    "satoshi",
 }
 
 # Hard reject: if ANY of these appear, it's definitely not finance
@@ -167,7 +170,7 @@ _REJECT_KEYWORDS = {
     "will .* launch a token",
     # Other noise
     "which states will", "which countries will",
-    "la liga", "goalscorer",
+    "goalscorer",
     "draft: first overall",
     "warner bros",
 }
@@ -589,7 +592,7 @@ async def get_market_prices(market_id: str) -> dict:
         "volume_24h": float(market.get("volume24hr", 0) or 0),
         "liquidity": float(market.get("liquidity", 0) or 0),
         "end_date": market.get("endDate", ""),
-        "last_updated": datetime.now(timezone.utc).isoformat(),
+        "last_updated": datetime.now(UTC).isoformat(),
     }
 
     # Cache (5 min for prices)

@@ -9,13 +9,17 @@ Tools:
   get_technical_indicators — RSI, MACD, Bollinger Bands, SMA/EMA for a ticker
 """
 
-import httpx
 import logging
-from backend.tools.base import (
-    ToolResult, transient_error, validation_error,
-    business_error, classify_http_error, retry_with_backoff,
-)
+
+import httpx
+
 from backend.config import get_settings
+from backend.tools.base import (
+    ToolResult,
+    retry_with_backoff,
+    transient_error,
+    validation_error,
+)
 
 logger = logging.getLogger("tools.alpha_vantage")
 
@@ -120,9 +124,12 @@ async def get_technical_indicators(ticker: str) -> dict:
     # Compute signals
     rsi_signal = None
     if rsi_value is not None:
-        if rsi_value > 70: rsi_signal = "overbought"
-        elif rsi_value < 30: rsi_signal = "oversold"
-        else: rsi_signal = "neutral"
+        if rsi_value > 70:
+            rsi_signal = "overbought"
+        elif rsi_value < 30:
+            rsi_signal = "oversold"
+        else:
+            rsi_signal = "neutral"
 
     macd_signal_str = None
     if macd_hist is not None:

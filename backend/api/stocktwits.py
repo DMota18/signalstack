@@ -12,11 +12,13 @@ Endpoints:
   GET /stocktwits/:ticker  — Verified-only messages for a ticker
 """
 
-import httpx
 import logging
+
+import httpx
 from fastapi import APIRouter, Depends, Query
+
 from backend.models.schemas import APIResponse
-from backend.services.auth import get_current_user, CurrentUser
+from backend.services.auth import CurrentUser, get_current_user
 
 logger = logging.getLogger("api.stocktwits")
 

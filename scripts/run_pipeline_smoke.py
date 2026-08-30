@@ -4,6 +4,7 @@ Hits the live Supabase project and the Claude API (incurs real cost).
 Run deliberately: python -m scripts.run_pipeline_smoke
 """
 import asyncio
+
 from backend.services.pipeline import generate_intelligence
 from backend.services.supabase import get_service_client
 

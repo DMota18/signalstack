@@ -9,16 +9,16 @@ Tests for:
 """
 
 import pytest
+
 from backend.services.hooks import (
-    pre_execution_hook,
-    post_execution_hook,
-    intercept_output,
+    DISCLAIMER,
     build_reformulation_prompt,
     check_concentration_warnings,
-    DISCLAIMER,
+    intercept_output,
+    post_execution_hook,
+    pre_execution_hook,
 )
-from tests.conftest import make_user_context, make_holdings
-
+from tests.conftest import make_user_context
 
 # ============================================================================
 # PRE-EXECUTION HOOKS

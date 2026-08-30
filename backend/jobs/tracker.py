@@ -19,8 +19,8 @@ Usage in tasks:
 """
 
 import time
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
+
 from backend.services.supabase import get_service_client
 
 
@@ -30,7 +30,7 @@ class JobTracker:
     def __init__(self, user_id: str, job_type: str):
         self.user_id = user_id
         self.job_type = job_type
-        self.run_id: Optional[str] = None
+        self.run_id: str | None = None
         self.agent_results: dict = {}
         self.start_time: float = 0
 
@@ -47,7 +47,7 @@ class JobTracker:
                 "job_type": self.job_type,
                 "status": "running",
                 "agent_results": {},
-                "started_at": datetime.now(timezone.utc).isoformat(),
+                "started_at": datetime.now(UTC).isoformat(),
             },
         )
 
@@ -64,13 +64,13 @@ class JobTracker:
         self,
         agent_name: str,
         status: str,
-        duration_ms: Optional[int] = None,
-        error: Optional[str] = None,
-        error_category: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        duration_ms: int | None = None,
+        error: str | None = None,
+        error_category: str | None = None,
+        metadata: dict | None = None,
     ):
         """Record a subagent's result. Called after each agent completes.
-        
+
         Args:
             agent_name: e.g. "sentiment", "polymarket", "insider"
             status: "completed", "failed", "skipped"
@@ -102,14 +102,14 @@ class JobTracker:
 
     async def complete(
         self,
-        alert_id: Optional[str] = None,
-        tokens_used: Optional[int] = None,
-        cost_usd: Optional[float] = None,
-        error_message: Optional[str] = None,
-        error_category: Optional[str] = None,
+        alert_id: str | None = None,
+        tokens_used: int | None = None,
+        cost_usd: float | None = None,
+        error_message: str | None = None,
+        error_category: str | None = None,
     ):
         """Finalize the job run. Computes status from agent results.
-        
+
         Status logic:
           - All agents completed → "completed"
           - Some agents completed, some failed → "partial"
@@ -150,7 +150,7 @@ class JobTracker:
             "status": status,
             "agent_results": self.agent_results,
             "total_duration_ms": elapsed_ms,
-            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "completed_at": datetime.now(UTC).isoformat(),
         }
         if alert_id:
             data["alert_id"] = alert_id

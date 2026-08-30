@@ -14,15 +14,18 @@ These tools serve the Institutional Flow Agent subagent.
 Focus: Bridgewater, Renaissance, Berkshire, Citadel + other major funds.
 """
 
-import httpx
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
-from backend.config import get_settings
+import httpx
+
 from backend.tools.base import (
-    ToolResult, ToolError, transient_error, validation_error,
-    business_error, permission_error, classify_http_error, retry_with_backoff,
+    ToolResult,
+    business_error,
+    classify_http_error,
+    retry_with_backoff,
+    transient_error,
+    validation_error,
 )
 
 logger = logging.getLogger("tools.sec_edgar")
@@ -52,7 +55,7 @@ MAJOR_FUND_CIKS = {
 }
 
 
-async def _sec_request(url: str, tool_name: str, params: Optional[dict] = None) -> dict:
+async def _sec_request(url: str, tool_name: str, params: dict | None = None) -> dict:
     """Make a request to SEC EDGAR with retry and rate limit awareness."""
     async def _call():
         async with httpx.AsyncClient(timeout=30.0, headers=SEC_HEADERS) as client:
@@ -123,7 +126,7 @@ async def get_institutional_holders(ticker: str) -> dict:
             "forms": "13F-HR,13F-HR/A",
             "dateRange": "custom",
             "startdt": _quarter_ago(),
-            "enddt": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            "enddt": datetime.now(UTC).strftime("%Y-%m-%d"),
         },
     )
 
@@ -326,7 +329,7 @@ async def get_13f_fund_positions(fund_name: str) -> dict:
 def _quarter_ago() -> str:
     """Return a date string ~3 months ago for 13F filing search range."""
     from datetime import timedelta
-    dt = datetime.now(timezone.utc) - timedelta(days=120)
+    dt = datetime.now(UTC) - timedelta(days=120)
     return dt.strftime("%Y-%m-%d")
 
 

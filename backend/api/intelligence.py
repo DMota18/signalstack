@@ -16,8 +16,9 @@ import time
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
+
 from backend.models.schemas import APIResponse
-from backend.services.auth import get_current_user, CurrentUser
+from backend.services.auth import CurrentUser, get_current_user
 from backend.services.pipeline import generate_on_demand
 
 logger = logging.getLogger("api.intelligence")
@@ -30,7 +31,7 @@ async def generate_intelligence_now(
     user: CurrentUser = Depends(get_current_user),
 ):
     """Generate a fresh portfolio intelligence report on demand.
-    
+
     This runs the full coordinator pipeline: all signal agents
     sequentially, synthesis, and alert creation. Takes 2-5 minutes
     depending on portfolio size.
@@ -116,16 +117,25 @@ async def stream_intelligence(
             return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
         try:
-            from backend.services.context import build_user_context
-            from backend.services.hooks import intercept_output, check_concentration_warnings, DISCLAIMER
-            from backend.services.cost_control import select_model_for_user, get_cached_intelligence, record_job_cost, estimate_cost
             from backend.agents.coordinator import COORDINATOR_SYSTEM, SYNTHESIS_TOOL, _format_subagent_results
-            from backend.agents.subagents import (
-                run_sentiment_agent, run_polymarket_agent, run_insider_agent,
-                run_institutional_agent, run_macro_agent, run_profile_agent,
-            )
             from backend.agents.loop import run_agent_loop
-            from backend.services.pipeline import _create_alert, _build_alert_title
+            from backend.agents.subagents import (
+                run_insider_agent,
+                run_institutional_agent,
+                run_macro_agent,
+                run_polymarket_agent,
+                run_profile_agent,
+                run_sentiment_agent,
+            )
+            from backend.services.context import build_user_context
+            from backend.services.cost_control import (
+                estimate_cost,
+                get_cached_intelligence,
+                record_job_cost,
+                select_model_for_user,
+            )
+            from backend.services.hooks import DISCLAIMER, check_concentration_warnings
+            from backend.services.pipeline import _build_alert_title, _create_alert
 
             # Check cost budget
             yield sse("status", {"message": "Checking budget...", "phase": "init"})

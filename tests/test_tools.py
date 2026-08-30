@@ -10,15 +10,18 @@ Tests for tool implementations covering all 4 error categories:
 Plus success paths for each tool.
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 
 from backend.tools.base import (
-    ToolResult, ToolError,
-    transient_error, validation_error, business_error, permission_error,
+    ToolResult,
+    business_error,
     classify_http_error,
+    permission_error,
+    transient_error,
+    validation_error,
 )
-
 
 # ============================================================================
 # BASE ERROR FACTORIES
@@ -234,19 +237,19 @@ class TestPolymarketRelevanceFilter:
     """The relevance filter should exclude sports/political noise."""
 
     def test_filters_sports_market(self):
-        from backend.tools.polymarket import _is_relevant, _build_relevance_keywords
+        from backend.tools.polymarket import _build_relevance_keywords, _is_relevant
         market = {"question": "Lakers vs Celtics game tonight?", "category": "sports"}
         keywords = _build_relevance_keywords("NVDA")
         assert _is_relevant(market, keywords) is False
 
     def test_keeps_relevant_market(self):
-        from backend.tools.polymarket import _is_relevant, _build_relevance_keywords
+        from backend.tools.polymarket import _build_relevance_keywords, _is_relevant
         market = {"question": "Will Nvidia beat Q2 earnings?", "category": "economics"}
         keywords = _build_relevance_keywords("Nvidia")
         assert _is_relevant(market, keywords) is True
 
     def test_filters_far_future_political_market(self):
-        from backend.tools.polymarket import _is_relevant, _build_relevance_keywords
+        from backend.tools.polymarket import _build_relevance_keywords, _is_relevant
         market = {
             "question": "Who will win the 2028 presidential election?",
             "category": "politics",

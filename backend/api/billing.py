@@ -10,12 +10,14 @@ Endpoints:
 """
 
 import logging
+from datetime import UTC
+
 import stripe
-from fastapi import APIRouter, Depends, Request, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from backend.config import get_settings
 from backend.models.schemas import APIResponse
-from backend.services.auth import get_current_user, CurrentUser
+from backend.services.auth import CurrentUser, get_current_user
 from backend.services.supabase import get_service_client
 
 logger = logging.getLogger("api.billing")
@@ -205,9 +207,9 @@ async def stripe_webhook(request: Request) -> dict:
             payload, sig_header, settings.stripe_webhook_secret,
         )
     except stripe.SignatureVerificationError:
-        raise HTTPException(status_code=400, detail="Invalid webhook signature")
+        raise HTTPException(status_code=400, detail="Invalid webhook signature") from None
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid payload")
+        raise HTTPException(status_code=400, detail="Invalid payload") from None
 
     event_type = event["type"]
     data = event["data"]["object"]
@@ -363,8 +365,8 @@ def _unix_to_iso(ts: int | None) -> str | None:
     """Convert a Unix timestamp to ISO 8601 string."""
     if not ts:
         return None
-    from datetime import datetime, timezone
-    return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+    from datetime import datetime
+    return datetime.fromtimestamp(ts, tz=UTC).isoformat()
 
 
 def _get_app_url(settings) -> str:

@@ -12,15 +12,20 @@ Tools:
 These tools serve the Macro Agent subagent.
 """
 
-import httpx
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Optional
+from datetime import UTC, datetime, timedelta
+
+import httpx
 
 from backend.config import get_settings
 from backend.tools.base import (
-    ToolResult, transient_error, validation_error,
-    business_error, permission_error, classify_http_error, retry_with_backoff,
+    ToolResult,
+    business_error,
+    classify_http_error,
+    permission_error,
+    retry_with_backoff,
+    transient_error,
+    validation_error,
 )
 
 logger = logging.getLogger("tools.fred")
@@ -264,7 +269,7 @@ async def get_economic_calendar(days_ahead: int = 14) -> dict:
                     )
                     if dates_result.get("status_code") == 200:
                         release_dates = dates_result["data"].get("release_dates", [])
-                        now = datetime.now(timezone.utc).date()
+                        now = datetime.now(UTC).date()
                         cutoff = now + timedelta(days=days_ahead)
 
                         for rd in release_dates:

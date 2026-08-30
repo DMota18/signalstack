@@ -16,19 +16,17 @@ Pipeline:
 
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Optional
 
-from backend.services.supabase import get_service_client
-from backend.services.hooks import intercept_output, build_reformulation_prompt, DISCLAIMER
+from backend.agents.coordinator import COORDINATOR_SYSTEM, SYNTHESIS_TOOL, run_coordinator
+from backend.agents.loop import run_agent_loop
 from backend.services.cost_control import (
-    select_model_for_user,
+    estimate_cost,
     get_cached_intelligence,
     record_job_cost,
-    estimate_cost,
+    select_model_for_user,
 )
-from backend.agents.coordinator import run_coordinator, COORDINATOR_SYSTEM, SYNTHESIS_TOOL
-from backend.agents.loop import run_agent_loop
+from backend.services.hooks import DISCLAIMER, build_reformulation_prompt, intercept_output
+from backend.services.supabase import get_service_client
 
 logger = logging.getLogger("services.pipeline")
 
@@ -43,17 +41,17 @@ async def generate_intelligence(
     trigger_source: str = "scheduler",
 ) -> dict:
     """Run the full intelligence pipeline for a user.
-    
+
     1. Run coordinator (dispatches subagents, produces synthesis)
     2. Intercept output (advice filter, disclaimer)
     3. Create alert record in Supabase
     4. Return the alert for delivery
-    
+
     Args:
         user_id: SignalStack user ID
         alert_type: Type of alert to create
         trigger_source: What triggered this run (scheduler, user_request, price_monitor)
-        
+
     Returns:
         {
             "alert_id": str,
@@ -195,7 +193,7 @@ async def _create_alert(
     body_json: dict,
     related_tickers: list[str],
     signals_used: list[str],
-) -> Optional[str]:
+) -> str | None:
     """Create an alert record in alert_history. Returns the alert ID."""
     db = get_service_client()
 
@@ -230,7 +228,7 @@ async def _create_alert(
 
 def format_for_push(synthesis: dict, alert_type: str) -> dict:
     """Format synthesis into a push notification payload.
-    
+
     Push notifications are short — title + body, max ~200 chars body.
     We pick the most important signal to highlight.
     """
@@ -267,12 +265,11 @@ def format_for_push(synthesis: dict, alert_type: str) -> dict:
 
 def format_for_email(synthesis: dict, alert_type: str, user_name: str = "") -> dict:
     """Format synthesis into an email payload.
-    
+
     Emails can be longer — full narrative per holding.
     """
     holdings = synthesis.get("per_holding_intelligence", [])
     insights = synthesis.get("portfolio_level_insights", [])
-    summary = synthesis.get("portfolio_summary", {})
 
     subject = _build_alert_title(alert_type, synthesis)
 

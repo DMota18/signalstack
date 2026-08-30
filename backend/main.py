@@ -7,9 +7,34 @@ Run with: uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from backend.api import (
+    alerts,
+    auth,
+    billing,
+    chart,
+    connections,
+    earnings,
+    explore,
+    intelligence,
+    manual_portfolio,
+    market_data,
+    news,
+    og_image,
+    polymarket,
+    portfolios,
+    price_alerts,
+    profiles,
+    push_subscriptions,
+    referrals,
+    research,
+    seo,
+    stocktwits,
+    valuation,
+    watchlist,
+)
 from backend.config import get_settings
 from backend.middleware.rate_limit import RateLimitMiddleware
-from backend.api import auth, profiles, portfolios, watchlist, alerts, connections, intelligence, manual_portfolio, chart, polymarket, earnings, explore, research, price_alerts, push_subscriptions, news, valuation, market_data, stocktwits, billing, seo, og_image, referrals
 
 
 def create_app() -> FastAPI:

@@ -15,8 +15,10 @@ limit, a 429 is returned with a Retry-After header.
 
 import time
 from collections import defaultdict
-from fastapi import Request, HTTPException, status
+
+from fastapi import HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
+
 from backend.config import get_settings
 
 
@@ -28,7 +30,7 @@ class RateLimitEntry:
 
     def check(self, limit: int, window_seconds: int = 60) -> tuple[bool, int]:
         """Check if the user is within their rate limit.
-        
+
         Returns:
             (allowed, remaining) — whether the request is allowed and
             how many requests remain in the window.
@@ -48,7 +50,7 @@ class RateLimitEntry:
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Per-user rate limiting middleware.
-    
+
     Extracts user identity from the JWT (already decoded by downstream
     dependencies). For unauthenticated routes (auth endpoints), uses
     IP-based limiting with a generous default.

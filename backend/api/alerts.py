@@ -5,8 +5,9 @@ backend (service role) — users can only read, mark as read, and submit feedbac
 """
 
 from fastapi import APIRouter, Depends, Query
-from backend.models.schemas import APIResponse, AlertFeedbackRequest
-from backend.services.auth import get_current_user, CurrentUser
+
+from backend.models.schemas import AlertFeedbackRequest, APIResponse
+from backend.services.auth import CurrentUser, get_current_user
 from backend.services.supabase import get_anon_client
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])

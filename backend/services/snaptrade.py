@@ -22,14 +22,13 @@ error handling.
 import hashlib
 import hmac
 import json
-import time
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+import time
+from datetime import UTC, datetime
 from urllib.parse import urlencode
-from cryptography.fernet import Fernet
 
 import httpx
+from cryptography.fernet import Fernet
 
 from backend.config import get_settings
 from backend.services.supabase import get_service_client
@@ -57,11 +56,11 @@ class SnapTradeService:
         self,
         path: str,
         method: str = "GET",
-        query_params: Optional[dict] = None,
-        body: Optional[dict] = None,
+        query_params: dict | None = None,
+        body: dict | None = None,
     ) -> tuple[dict, dict]:
         """Generate HMAC-SHA256 signature for a SnapTrade API request.
-        
+
         Returns headers dict with Signature and timestamp.
         """
         timestamp = str(int(time.time()))
@@ -101,11 +100,11 @@ class SnapTradeService:
         self,
         method: str,
         path: str,
-        query_params: Optional[dict] = None,
-        body: Optional[dict] = None,
+        query_params: dict | None = None,
+        body: dict | None = None,
     ) -> dict:
         """Make a signed request to the SnapTrade API.
-        
+
         Returns: {"status_code": int, "data": dict|list}
         """
         headers, full_params = self._sign_request(path, method, query_params, body)
@@ -164,10 +163,10 @@ class SnapTradeService:
 
     async def register_user(self, user_id: str) -> dict:
         """Register a new SnapTrade user.
-        
+
         Args:
             user_id: Our SignalStack user ID (UUID). Used as the SnapTrade userId.
-            
+
         Returns:
             {"status_code": 200, "data": {"userId": "...", "userSecret": "..."}}
             The userSecret is generated once and must be stored encrypted.
@@ -195,14 +194,14 @@ class SnapTradeService:
         self,
         user_id: str,
         user_secret: str,
-        broker: Optional[str] = None,
-        custom_redirect: Optional[str] = None,
+        broker: str | None = None,
+        custom_redirect: str | None = None,
     ) -> dict:
         """Generate a redirect URL for the SnapTrade Connection Portal.
-        
+
         The user visits this URL to link their brokerage account via OAuth.
         After connecting, they're redirected back to our app.
-        
+
         Args:
             user_id: SnapTrade userId
             user_secret: Decrypted SnapTrade userSecret
@@ -257,7 +256,7 @@ class SnapTradeService:
         self, user_id: str, user_secret: str, account_id: str,
     ) -> dict:
         """Get positions for a specific account.
-        
+
         Returns positions with symbol, quantity, price, market value, etc.
         This is the per-account endpoint (preferred over the deprecated
         get_all_user_holdings).
@@ -308,10 +307,10 @@ class SnapTradeService:
 async def sync_user_holdings(user_id: str) -> dict:
     """Full sync: fetch all accounts and holdings from SnapTrade,
     upsert into SignalStack's portfolios and holdings tables.
-    
+
     Args:
         user_id: SignalStack user ID (UUID)
-        
+
     Returns:
         {"accounts_synced": int, "holdings_synced": int, "errors": [...]}
     """
@@ -342,13 +341,10 @@ async def sync_user_holdings(user_id: str) -> dict:
             st_account_id = conn["account_id"]
             connection_id = conn["id"]
 
-            # 2. Fetch account detail
-            acct_result = await svc.get_account_detail(st_user_id, st_user_secret, st_account_id)
-
-            # 3. Fetch holdings
+            # 2. Fetch holdings
             holdings_result = await svc.get_account_holdings(st_user_id, st_user_secret, st_account_id)
 
-            # 4. Fetch balances
+            # 3. Fetch balances
             balance_result = await svc.get_account_balances(st_user_id, st_user_secret, st_account_id)
 
             if holdings_result["status_code"] != 200:
@@ -438,7 +434,7 @@ async def sync_user_holdings(user_id: str) -> dict:
                 "connection_id": connection_id,
                 "total_value": round(total_value + cash_balance, 2),
                 "cash_balance": round(cash_balance, 2),
-                "synced_at": datetime.now(timezone.utc).isoformat(),
+                "synced_at": datetime.now(UTC).isoformat(),
             }
 
             portfolio_result = await db.insert(
@@ -476,7 +472,7 @@ async def sync_user_holdings(user_id: str) -> dict:
                     "avg_cost_basis": h["avg_cost_basis"],
                     "market_value": h["market_value"],
                     "pct_of_portfolio": h["pct_of_portfolio"],
-                    "synced_at": datetime.now(timezone.utc).isoformat(),
+                    "synced_at": datetime.now(UTC).isoformat(),
                 }
 
                 await db.insert(
@@ -492,7 +488,7 @@ async def sync_user_holdings(user_id: str) -> dict:
                 table="brokerage_connections",
                 data={
                     "status": "active",
-                    "last_sync_at": datetime.now(timezone.utc).isoformat(),
+                    "last_sync_at": datetime.now(UTC).isoformat(),
                     "last_sync_error": None,
                 },
                 filters={"id": f"eq.{connection_id}"},

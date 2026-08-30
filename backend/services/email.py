@@ -10,7 +10,6 @@ this service handles only the transport layer.
 
 import logging
 import re
-from typing import Optional
 
 import resend
 
@@ -24,7 +23,7 @@ async def send_email_to_user(
     user_id: str,
     subject: str,
     html_body: str,
-    text_body: Optional[str] = None,
+    text_body: str | None = None,
 ) -> dict:
     """Send an email to a user by looking up their email in profiles.
 
@@ -102,7 +101,7 @@ async def _send_via_smtp(
     user_id: str,
     subject: str,
     html_body: str,
-    text_body: Optional[str] = None,
+    text_body: str | None = None,
 ) -> dict:
     """Legacy SMTP fallback."""
     import smtplib
@@ -616,7 +615,6 @@ def build_weekly_email_html(synthesis: dict, user_name: str = "") -> str:
     """
     holdings = synthesis.get("per_holding_intelligence", [])
     insights = synthesis.get("portfolio_level_insights", [])
-    summary = synthesis.get("portfolio_summary", {})
 
     greeting = f"Hi {user_name}," if user_name else "Hi,"
 

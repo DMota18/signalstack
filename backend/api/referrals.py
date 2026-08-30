@@ -14,10 +14,11 @@ Endpoints:
 import logging
 import secrets
 import string
+
 from fastapi import APIRouter, Depends
 
 from backend.models.schemas import APIResponse
-from backend.services.auth import get_current_user, CurrentUser
+from backend.services.auth import CurrentUser, get_current_user
 from backend.services.supabase import get_service_client
 
 logger = logging.getLogger("api.referrals")
