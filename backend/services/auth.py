@@ -118,17 +118,9 @@ async def get_current_user(
     return CurrentUser(id=user_id, email=email, tier=tier, jwt_token=token)
 
 
-def require_tier(*allowed_tiers: str):
-    async def check_tier(user: CurrentUser = Depends(get_current_user)):
-        if user.tier not in allowed_tiers:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "code": "tier_required",
-                    "message": f"This feature requires {' or '.join(allowed_tiers)} tier.",
-                    "current_tier": user.tier,
-                    "upgrade_url": "/settings/billing",
-                },
-            )
-        return user
-    return check_tier
+# NOTE on tier gating: routes gate tier-locked features inline and
+# return APIResponse.fail(code="tier_required", ...) — the frontend
+# client expects the standard envelope, not a 403, so it can render the
+# upgrade prompt. A require_tier() dependency existed here but was
+# never adopted for exactly that reason; data-dependent gates (per
+# explore category, watchlist limits) can't be dependencies anyway.

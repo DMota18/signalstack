@@ -7,6 +7,7 @@ Numbered SQL migrations, applied in order against a Supabase project.
 | `001_initial_schema.sql` | Core tables (profiles, portfolios, holdings, alerts, earnings, jobs), the `user_case_facts` view, row-level security policies, and the `handle_new_user` signup trigger |
 | `002_billing_and_cost_tracking.sql` | Stripe subscription columns, per-user daily Claude cost tracking, referral codes and events |
 | `003_polymarket_ticker_tags.sql` | Prediction-market catalog auto-tagged to tickers |
+| `004_stripe_webhook_events.sql` | Webhook idempotency — each Stripe event id is processed exactly once |
 
 `dev_stub.sql` is **not** a migration — it is a minimal stand-in for the
 Supabase-managed environment (the `auth` schema, `auth.uid()`, and the

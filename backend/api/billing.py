@@ -14,6 +14,7 @@ from datetime import UTC
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 
 from backend.config import get_settings
 from backend.models.schemas import APIResponse
@@ -68,9 +69,12 @@ async def create_checkout_session(
     profile = profile_result["data"]
     customer_id = profile.get("stripe_customer_id")
 
-    # Create Stripe customer if needed
+    # Create Stripe customer if needed.
+    # The Stripe SDK is synchronous — run it in a threadpool so a slow
+    # Stripe call doesn't stall the single-worker event loop.
     if not customer_id:
-        customer = stripe.Customer.create(
+        customer = await run_in_threadpool(
+            stripe.Customer.create,
             email=profile.get("email") or user.email,
             name=profile.get("display_name") or "",
             metadata={"signalstack_user_id": user.id},
@@ -85,7 +89,8 @@ async def create_checkout_session(
         )
 
     # Create Checkout Session
-    session = stripe.checkout.Session.create(
+    session = await run_in_threadpool(
+        stripe.checkout.Session.create,
         customer=customer_id,
         mode="subscription",
         line_items=[{
@@ -137,7 +142,8 @@ async def create_portal_session(
     if not customer_id:
         return APIResponse.fail("No billing account found", code="no_billing_account")
 
-    session = stripe.billing_portal.Session.create(
+    session = await run_in_threadpool(
+        stripe.billing_portal.Session.create,
         customer=customer_id,
         return_url=settings.stripe_portal_return_url or f"{_get_app_url(settings)}/app/settings",
     )
@@ -212,18 +218,31 @@ async def stripe_webhook(request: Request) -> dict:
         raise HTTPException(status_code=400, detail="Invalid payload") from None
 
     event_type = event["type"]
+    event_id = event["id"]
     data = event["data"]["object"]
 
-    logger.info(f"Stripe webhook: {event_type}")
+    # Idempotency: Stripe redelivers events on any non-2xx or timeout.
+    # Claim the event id before handling; a duplicate delivery is a no-op
+    # (a replayed checkout.session.completed must not re-credit referrers).
+    if not await _claim_webhook_event(event_id, event_type):
+        logger.info(f"Stripe webhook duplicate ignored: {event_id} ({event_type})")
+        return {"received": True, "duplicate": True}
 
-    if event_type == "checkout.session.completed":
-        await _handle_checkout_completed(data)
-    elif event_type == "customer.subscription.updated":
-        await _handle_subscription_updated(data)
-    elif event_type == "customer.subscription.deleted":
-        await _handle_subscription_deleted(data)
-    elif event_type == "invoice.payment_failed":
-        await _handle_payment_failed(data)
+    logger.info(f"Stripe webhook: {event_type} ({event_id})")
+
+    try:
+        if event_type == "checkout.session.completed":
+            await _handle_checkout_completed(data)
+        elif event_type == "customer.subscription.updated":
+            await _handle_subscription_updated(data)
+        elif event_type == "customer.subscription.deleted":
+            await _handle_subscription_deleted(data)
+        elif event_type == "invoice.payment_failed":
+            await _handle_payment_failed(data)
+    except Exception:
+        # Release the claim so Stripe's retry can reprocess the event
+        await _release_webhook_event(event_id)
+        raise
 
     return {"received": True}
 
@@ -245,7 +264,7 @@ async def _handle_checkout_completed(session: dict) -> None:
     db = get_service_client()
 
     # Fetch subscription details for period end
-    sub = stripe.Subscription.retrieve(subscription_id) if subscription_id else None
+    sub = await run_in_threadpool(stripe.Subscription.retrieve, subscription_id) if subscription_id else None
 
     update_data = {
         "tier": "pro",
@@ -255,7 +274,7 @@ async def _handle_checkout_completed(session: dict) -> None:
     }
 
     if sub:
-        update_data["subscription_current_period_end"] = _unix_to_iso(sub.current_period_end)
+        update_data["subscription_current_period_end"] = _unix_to_iso(_sub_period_end(sub))
 
     result = await db.update(
         table="profiles",
@@ -296,7 +315,7 @@ async def _handle_subscription_updated(subscription: dict) -> None:
         data={
             "tier": tier,
             "subscription_status": sub_status,
-            "subscription_current_period_end": _unix_to_iso(subscription.get("current_period_end")),
+            "subscription_current_period_end": _unix_to_iso(_sub_period_end(subscription)),
         },
         filters={"id": f"eq.{user_id}"},
     )
@@ -342,6 +361,53 @@ async def _handle_payment_failed(invoice: dict) -> None:
 # ============================================================================
 # HELPERS
 # ============================================================================
+
+async def _claim_webhook_event(event_id: str, event_type: str) -> bool:
+    """Record a webhook event id; False if it was already processed.
+
+    Relies on the primary key of stripe_webhook_events — a concurrent
+    or replayed delivery gets a conflict instead of a second insert.
+    """
+    db = get_service_client()
+    result = await db.insert(
+        table="stripe_webhook_events",
+        data={"id": event_id, "event_type": event_type},
+    )
+    if result["status_code"] in (200, 201):
+        return True
+    if result["status_code"] == 409:
+        return False
+    # Idempotency table unreachable — better to risk a duplicate than
+    # to drop a subscription lifecycle event entirely
+    logger.warning(f"Webhook idempotency insert failed ({result['status_code']}); processing anyway")
+    return True
+
+
+async def _release_webhook_event(event_id: str) -> None:
+    """Remove a claimed event id after a failed handler, so retries work."""
+    db = get_service_client()
+    await db.delete(
+        table="stripe_webhook_events",
+        filters={"id": f"eq.{event_id}"},
+    )
+
+
+def _sub_period_end(sub) -> int | None:
+    """Extract current_period_end from a subscription object.
+
+    Newer Stripe API versions moved it from the subscription to its
+    items — support both shapes (StripeObject behaves like a dict).
+    """
+    if not sub:
+        return None
+    value = sub.get("current_period_end")
+    if value:
+        return value
+    items = (sub.get("items") or {}).get("data") or []
+    if items:
+        return items[0].get("current_period_end")
+    return None
+
 
 async def _find_user_by_customer(customer_id: str) -> str | None:
     """Look up a SignalStack user ID from a Stripe customer ID."""
