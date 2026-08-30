@@ -1,4 +1,4 @@
-# Zelador Analytics (SignalStack)
+# SignalStack
 
 An AI-powered portfolio intelligence platform that monitors your holdings and delivers actionable research using Claude, prediction markets, insider filings, institutional flow, and macroeconomic indicators.
 
@@ -28,7 +28,7 @@ Status: Active development. Core features are fully functional including dashboa
 
 ## How It Works
 
-Zelador Analytics runs a **hub-and-spoke agentic architecture** where a coordinator dispatches six specialist AI agents against your portfolio, synthesizes their findings, and delivers intelligence via email digest, push notification, or real-time streaming in the browser.
+SignalStack runs a **hub-and-spoke agentic architecture** where a coordinator dispatches six specialist AI agents against your portfolio, synthesizes their findings, and delivers intelligence via email digest, push notification, or real-time streaming in the browser.
 
 ### The Intelligence Pipeline
 

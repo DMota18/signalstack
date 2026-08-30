@@ -66,7 +66,7 @@ export default function OnboardingModal({ onClose, onHoldingsAdded }: Onboarding
                   style={{ background: `${gold}15` }}>
                   <Wallet size={22} style={{ color: gold }} />
                 </div>
-                <h2 className="font-display text-xl mb-2">Welcome to Zelador Analytics</h2>
+                <h2 className="font-display text-xl mb-2">Welcome to SignalStack</h2>
                 <p className="text-sm font-body leading-relaxed" style={{ color: textMuted }}>
                   Add your holdings so we can deliver personalized intelligence
                   across 5 signal dimensions.

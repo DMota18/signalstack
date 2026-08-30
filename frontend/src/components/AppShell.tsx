@@ -106,7 +106,7 @@ export default function AppShell() {
             <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: gold }}>
               <span className="text-[9px] font-bold" style={{ color: '#0C0C0E' }}>Z</span>
             </div>
-            <span className="font-display text-sm hidden sm:inline" style={{ color: textPrimary }}>Zelador Analytics</span>
+            <span className="font-display text-sm hidden sm:inline" style={{ color: textPrimary }}>SignalStack</span>
           </div>
 
           <div className="hidden md:flex items-center gap-2">
@@ -173,7 +173,7 @@ export default function AppShell() {
         >
           {/* Mobile: show brand at top of drawer */}
           <div className="lg:hidden px-5 pt-5 pb-3">
-            <span className="font-display text-sm" style={{ color: gold }}>Zelador Analytics</span>
+            <span className="font-display text-sm" style={{ color: gold }}>SignalStack</span>
           </div>
 
           {/* Navigation */}

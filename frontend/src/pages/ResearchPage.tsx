@@ -997,7 +997,7 @@ function ShareButton({ ticker, price, dayChangePct, isDark, gold, textMuted }: {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `${ticker} — Signal Analysis | Zelador Analytics`,
+          title: `${ticker} — Signal Analysis | SignalStack`,
           text: shareText,
           url: shareUrl,
         });

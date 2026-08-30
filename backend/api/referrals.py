@@ -52,7 +52,7 @@ async def get_referral_code(
         if existing_code:
             return APIResponse.success({
                 "code": existing_code,
-                "link": f"https://zeladoranalytics.com/signup?ref={existing_code}",
+                "link": f"https://signalstack.app/signup?ref={existing_code}",
             })
 
     # Generate a new code (retry on collision)
@@ -66,7 +66,7 @@ async def get_referral_code(
         if update_result["status_code"] in (200, 204):
             return APIResponse.success({
                 "code": code,
-                "link": f"https://zeladoranalytics.com/signup?ref={code}",
+                "link": f"https://signalstack.app/signup?ref={code}",
             })
 
     return APIResponse.fail("Failed to generate referral code", code="generation_error")

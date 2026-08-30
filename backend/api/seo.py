@@ -33,7 +33,7 @@ SEED_TICKERS = [
 ]
 
 # Base URL — override via CORS_ORIGINS or default
-BASE_URL = "https://zeladoranalytics.com"
+BASE_URL = "https://signalstack.app"
 
 
 @router.get("/sitemap.xml")

@@ -24,7 +24,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function LoadingScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <span className="font-display text-lg" style={{ color: '#D4A843' }}>Zelador Analytics</span>
+      <span className="font-display text-lg" style={{ color: '#D4A843' }}>SignalStack</span>
     </div>
   );
 }

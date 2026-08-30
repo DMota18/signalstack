@@ -6,7 +6,7 @@ Returns an SVG that renders as a signal card showing:
   - Ticker + company name
   - Price + daily change
   - Signal scores (sentiment, insider, institutional, polymarket, macro)
-  - Zelador Analytics branding
+  - SignalStack branding
 
 Used by Open Graph and Twitter Card meta tags on public research pages.
 
@@ -113,7 +113,7 @@ async def get_og_image(ticker: str):
 
   <!-- Brand -->
   <text x="60" y="60" fill="#D4A843" font-size="18" font-weight="600" font-family="Georgia,serif" letter-spacing="1">
-    Zelador Analytics
+    SignalStack
   </text>
   <text x="1140" y="60" fill="#4A4A4D" font-size="13" font-family="-apple-system,BlinkMacSystemFont,sans-serif" text-anchor="end">
     Signal Analysis
@@ -176,7 +176,7 @@ async def get_og_image(ticker: str):
 
   <!-- CTA -->
   <text x="1140" y="572" fill="#4A4A4D" font-size="13" font-family="-apple-system,BlinkMacSystemFont,sans-serif" text-anchor="end">
-    zeladoranalytics.com/research/{_escape(ticker)}
+    signalstack.app/research/{_escape(ticker)}
   </text>
 
   <!-- Disclaimer -->
@@ -206,7 +206,7 @@ def _fallback_image(ticker: str) -> Response:
     Signal Analysis
   </text>
   <text x="600" y="420" fill="#D4A843" font-size="18" font-family="Georgia,serif" text-anchor="middle">
-    Zelador Analytics
+    SignalStack
   </text>
 </svg>"""
     return Response(content=svg, media_type="image/svg+xml",

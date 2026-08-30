@@ -39,7 +39,7 @@ export default function SignUpPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Link to="/">
-            <h1 className="font-display text-2xl tracking-wide" style={{ color: gold }}>Zelador Analytics</h1>
+            <h1 className="font-display text-2xl tracking-wide" style={{ color: gold }}>SignalStack</h1>
           </Link>
           <p className="text-sm font-body mt-2" style={{ color: textMuted }}>
             Every signal on your stock. One page.
@@ -103,7 +103,7 @@ export default function SignUpPage() {
               style={{ accentColor: gold }}
             />
             <span className="text-[11px] font-body leading-relaxed" style={{ color: textMuted }}>
-              I understand that Zelador Analytics provides educational market intelligence only and does not offer financial, investment, or trading advice. All decisions are my own responsibility.
+              I understand that SignalStack provides educational market intelligence only and does not offer financial, investment, or trading advice. All decisions are my own responsibility.
             </span>
           </label>
 

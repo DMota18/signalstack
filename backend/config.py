@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     # Fear & Greed: no key needed (free endpoint)
 
     # --- App ---
-    app_name: str = "Zelador Analytics"
+    app_name: str = "SignalStack"
     app_env: str = "development"       # development | staging | production
     debug: bool = True
     api_version: str = "v1"
@@ -75,7 +75,7 @@ class Settings(BaseSettings):
 
     # --- Email (Resend) ---
     resend_api_key: str = ""
-    email_from: str = "Zelador Analytics <noreply@zeladoranalytics.com>"
+    email_from: str = "SignalStack <noreply@signalstack.app>"
 
     # --- Email (SMTP, legacy fallback) ---
     smtp_host: str = ""

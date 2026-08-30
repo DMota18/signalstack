@@ -37,7 +37,7 @@ export default function SignInPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Link to="/">
-            <h1 className="font-display text-2xl tracking-wide" style={{ color: gold }}>Zelador Analytics</h1>
+            <h1 className="font-display text-2xl tracking-wide" style={{ color: gold }}>SignalStack</h1>
           </Link>
           <p className="text-sm font-body mt-2" style={{ color: textMuted }}>Welcome back</p>
         </div>
