@@ -215,9 +215,12 @@ Stripe Checkout handles payment, webhooks manage tier transitions, and referral 
 ## Running Locally
 
 ```bash
+# Database — apply migrations/001..003 in order in the Supabase SQL editor
+# (see migrations/README.md; validate the chain locally with
+#  scripts/validate_migrations.sh)
+
 # Backend
-cd backend
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 uvicorn backend.main:app --reload --port 8000
 
 # Frontend
@@ -230,7 +233,18 @@ celery -A backend.jobs.celery_app worker --loglevel=info
 celery -A backend.jobs.celery_app beat --loglevel=info
 ```
 
-Requires `.env` with Supabase, Anthropic, and Redis credentials at minimum.
+Requires `.env` with Supabase, Anthropic, and Redis credentials at minimum
+(see `.env.example`).
+
+## Running Tests
+
+```bash
+pip install -r backend/requirements.txt -r requirements-dev.txt
+pytest
+```
+
+The suite mocks all external APIs and needs no `.env` — fake configuration
+is injected by `tests/conftest.py`.
 
 ## Deploying
 
