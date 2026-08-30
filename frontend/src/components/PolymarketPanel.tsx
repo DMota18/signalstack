@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
 import {
-  TrendingUp, BarChart3, Clock, Search, Loader2,
-  ChevronDown, ChevronUp, Activity, Globe, AlertCircle,
+  TrendingUp, Clock, Search, Loader2,
+  ChevronDown, ChevronUp, Globe, AlertCircle,
 } from 'lucide-react';
 
 interface PolymarketMarket {
@@ -39,53 +39,6 @@ interface TickerMatch {
   markets: PolymarketMarket[];
   events?: PolymarketEvent[];
 }
-
-// ─── Helpers ───────────────────────────────────────────────────────────────
-
-function formatVolume(vol: number): string {
-  if (vol >= 1_000_000) return `$${(vol / 1_000_000).toFixed(1)}M`;
-  if (vol >= 1_000) return `$${(vol / 1_000).toFixed(0)}K`;
-  return `$${vol.toFixed(0)}`;
-}
-
-function confidenceLevel(market: PolymarketMarket): { level: string; tier: 'high' | 'medium' | 'low' } {
-  const vol = market.volume_24h || 0;
-  const liq = market.liquidity || 0;
-  if (vol > 100000 && liq > 50000) return { level: 'High confidence', tier: 'high' };
-  if (vol > 10000 && liq > 5000) return { level: 'Medium confidence', tier: 'medium' };
-  return { level: 'Low confidence', tier: 'low' };
-}
-
-function formatEndDate(dateStr: string): string {
-  if (!dateStr) return '';
-  try {
-    const d = new Date(dateStr);
-    const now = new Date();
-    const diff = d.getTime() - now.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    if (days < 0) return 'Ended';
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Tomorrow';
-    if (days < 30) return `${days}d left`;
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  } catch {
-    return '';
-  }
-}
-
-
-import ProbabilityGauge from './ProbabilityGauge';
-
-// ─── Probability Bar (larger version for panel) ────────────────────────────
-
-function ProbabilityBarLarge({
-  pct, gold, isDark,
-}: {
-  pct: number; gold: string; isDark: boolean;
-}) {
-  return <ProbabilityGauge pct={pct} size={64} strokeWidth={5} />;
-}
-
 
 // ─── Full Market Row ───────────────────────────────────────────────────────
 

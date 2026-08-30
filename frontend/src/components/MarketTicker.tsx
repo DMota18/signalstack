@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../hooks/useTheme';
-import { TrendingUp, TrendingDown } from 'lucide-react';
 
 interface MarketIndex {
   symbol: string;

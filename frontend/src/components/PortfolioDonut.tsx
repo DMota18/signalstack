@@ -163,7 +163,6 @@ function classifySector(h: any): string {
 }
 
 function classifyMarketCap(h: any): string {
-  const mv = h.market_value || 0;
   const price = h.current_price || 0;
   // Rough estimate: if the user holds it and the price is high, assume large/mega cap
   // This is a heuristic since we don't have actual market cap per holding here

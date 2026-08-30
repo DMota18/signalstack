@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
 import PortfolioChart from '../components/PortfolioChart';
@@ -49,7 +48,6 @@ function changeColor(pct: number, isDark: boolean): string {
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const { user } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
 

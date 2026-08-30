@@ -18,7 +18,6 @@ export default function PublicResearchPage() {
   const { ticker } = useParams<{ ticker: string }>();
   const { isDark, toggleTheme } = useTheme();
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   const gold = isDark ? '#D4A843' : '#8B6914';
   const textMuted = isDark ? '#6A6A6D' : '#8A8A8D';

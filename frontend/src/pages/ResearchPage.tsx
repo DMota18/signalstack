@@ -12,7 +12,6 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer,
 import PriceChart from '../components/PriceChart';
 import SocialFeed from '../components/SocialFeed';
 import SignalRadar from '../components/SignalRadar';
-import ProbabilityGauge from '../components/ProbabilityGauge';
 import FairValueGauge from '../components/FairValueGauge';
 import PerformanceComparison from '../components/PerformanceComparison';
 
@@ -108,7 +107,7 @@ function StatRow({ label, value, isDark }: { label: string; value: string; isDar
 
 // ─── Financial Statements Tabs ──────────────────────────────────────────
 
-function FinancialTabs({ financials, isDark, gold, textMuted, border }: {
+function FinancialTabs({ financials, isDark, gold, textMuted, border: _border }: {
   financials: any; isDark: boolean; gold: string; textMuted: string; border: string;
 }) {
   const [tab, setTab] = useState<'income' | 'balance' | 'cashflow'>('income');
@@ -982,7 +981,7 @@ export default function ResearchPage() {
 
 // ─── Share button ────────────────────────────────────────────────────────
 
-function ShareButton({ ticker, price, dayChangePct, isDark, gold, textMuted }: {
+function ShareButton({ ticker, price, dayChangePct, isDark, gold: _gold, textMuted }: {
   ticker: string; price: number; dayChangePct: number;
   isDark: boolean; gold: string; textMuted: string;
 }) {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
-import { Plus, Loader2, X, Check, Search } from 'lucide-react';
+import { Plus, Loader2, Check } from 'lucide-react';
 
 interface AddHoldingFormProps {
   onSuccess?: () => void;
@@ -116,7 +116,7 @@ export default function AddHoldingForm({ onSuccess, compact = false }: AddHoldin
       } else {
         setError(res.error?.message || 'Failed to add holding');
       }
-    } catch (err) {
+    } catch {
       setError('Something went wrong. Please try again.');
     }
 

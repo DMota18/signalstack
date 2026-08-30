@@ -44,7 +44,6 @@ export default function AlertDetailPage() {
   const synthesis = alert.body_json || {};
   const holdings = synthesis.per_holding_intelligence || [];
   const insights = synthesis.portfolio_level_insights || [];
-  const summary = synthesis.portfolio_summary || {};
 
   return (
     <div className="space-y-6 max-w-3xl">

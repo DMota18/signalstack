@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
-import { TrendingUp, TrendingDown } from 'lucide-react';
 import { getLogoUrl, getBrandColor } from '../lib/brandColors';
 
 type ChangeMode = 'unrealized' | 'day' | 'weight';
 
-export default function HoldingsTable({ holdings, onRemove }: { holdings: any[]; onRemove?: (ticker: string) => void }) {
+export default function HoldingsTable({ holdings, onRemove: _onRemove }: { holdings: any[]; onRemove?: (ticker: string) => void }) {
   const { isDark } = useTheme();
   const navigate = useNavigate();
   const [changeMode, setChangeMode] = useState<ChangeMode>('day');

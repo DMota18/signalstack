@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { ArrowRight, Shield, Zap, TrendingUp, BarChart3, Sun, Moon, Search } from 'lucide-react';

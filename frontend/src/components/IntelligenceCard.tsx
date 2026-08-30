@@ -31,11 +31,6 @@ export default function IntelligenceCard() {
   const insights = synthesis.portfolio_level_insights || [];
   const signalCount = (latest.signals_used || []).length;
 
-  // Find the most notable holding (conflicting or strongest signal)
-  const notable = holdings.find((h: any) => h.net_signal === 'conflicting')
-    || holdings.find((h: any) => h.net_signal?.includes('bullish') || h.net_signal?.includes('bearish'))
-    || holdings[0];
-
   // Time ago
   const timeAgo = (dateStr: string) => {
     const diff = Date.now() - new Date(dateStr).getTime();

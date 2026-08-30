@@ -73,7 +73,7 @@ class ApiClient {
 
       const data = await response.json();
       return data;
-    } catch (err) {
+    } catch {
       return {
         status: 'error',
         error: { code: 'network', message: 'Network error. Please check your connection.' },
@@ -95,7 +95,9 @@ class ApiClient {
           return true;
         }
       }
-    } catch {}
+    } catch {
+      /* non-fatal: network failure during token refresh — fall through to return false */
+    }
     return false;
   }
 

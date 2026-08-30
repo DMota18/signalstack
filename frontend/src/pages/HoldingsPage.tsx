@@ -5,8 +5,8 @@ import HoldingsTable from '../components/HoldingsTable';
 import PortfolioDonut from '../components/PortfolioDonut';
 import AddHoldingForm from '../components/AddHoldingForm';
 import {
-  Plus, Loader2, ChevronDown, ChevronUp, Eye, TrendingUp, TrendingDown,
-  Trash2, BellPlus, X,
+  Plus, Loader2, ChevronUp, Eye, TrendingUp, TrendingDown,
+  Trash2, BellPlus,
 } from 'lucide-react';
 
 export default function HoldingsPage() {

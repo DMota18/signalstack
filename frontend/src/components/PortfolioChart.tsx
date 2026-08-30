@@ -2,8 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
 import {
-  X, Loader2, CandlestickChart, BarChart3,
-  TrendingUp, TrendingDown, Activity, LineChart,
+  X, Loader2, CandlestickChart, BarChart3, Activity, LineChart,
   Maximize2, Minimize2,
 } from 'lucide-react';
 
@@ -230,7 +229,6 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
   const textPrimary = isDark ? '#E8E6E1' : '#1A1A1D';
   const textMuted = isDark ? '#6A6A6D' : '#9A9A9D';
   const textSecondary = isDark ? '#9A9A9D' : '#5A5A5D';
-  const surface = isDark ? '#111113' : '#FFFFFF';
   const border = isDark ? '#1A1A1D' : '#E8E6E1';
   const inputBg = isDark ? '#0C0C0E' : '#F5F3EE';
   const inputBorder = isDark ? '#2A2A2D' : '#D0D0D0';

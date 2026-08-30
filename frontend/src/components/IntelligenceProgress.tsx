@@ -35,14 +35,14 @@ export default function IntelligenceProgress({
   holdingsCount,
   agents,
   statusMessage,
-  currentIndex,
+  currentIndex: _currentIndex,
   totalAgents,
   error,
   onDismiss,
 }: IntelligenceProgressProps) {
   const { isDark } = useTheme();
   const [timerStep, setTimerStep] = useState(0);
-  const [startTime, setStartTime] = useState<number | null>(null);
+  const [, setStartTime] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clockRef = useRef<ReturnType<typeof setInterval> | null>(null);

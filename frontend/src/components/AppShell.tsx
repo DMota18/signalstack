@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { useIntelligenceStream } from '../hooks/useIntelligenceStream';
@@ -9,7 +9,7 @@ import FearGreedWidget from './FearGreedWidget';
 import IntelligenceProgress from './IntelligenceProgress';
 import {
   LayoutDashboard, Briefcase, BarChart3, Search, Bell, Settings,
-  Calendar, Sun, Moon, LogOut, Zap, Loader2, RefreshCw, Menu, X,
+  Calendar, Sun, Moon, LogOut, Zap, Loader2, Menu, X,
 } from 'lucide-react';
 
 export default function AppShell() {

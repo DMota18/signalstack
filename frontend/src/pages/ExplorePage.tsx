@@ -154,7 +154,9 @@ export default function ExplorePage() {
               market_cap: res.data.fundamentals?.market_cap || null,
             };
           }
-        } catch {}
+        } catch {
+          /* non-fatal: price lookup failed for this idea — leave it out of the price map */
+        }
       })
     );
     setPrices(priceMap);

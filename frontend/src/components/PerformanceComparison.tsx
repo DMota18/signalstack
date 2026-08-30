@@ -44,7 +44,6 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
   const gold = isDark ? '#D4A843' : '#8B6914';
   const textMuted = isDark ? '#9A9A9D' : '#5A5A5D';
   const gridColor = isDark ? '#141416' : '#F0EEE8';
-  const surface = isDark ? '#151517' : '#FFFFFF';
 
   useEffect(() => { loadLWC().then(() => setLwcReady(true)).catch(() => {}); }, []);
 
@@ -61,7 +60,9 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
           if (res.status === 'ok' && Array.isArray(res.data) && res.data.length > 0) {
             return { ticker: t, data: res.data };
           }
-        } catch {}
+        } catch {
+          /* non-fatal: chart fetch failed for this ticker — fall through to empty data */
+        }
         return { ticker: t, data: [] };
       })
     ).then((results) => {

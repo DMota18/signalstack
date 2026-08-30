@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
-import { Loader2, TrendingUp, TrendingDown, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 
 interface FairValueGaugeProps {
   ticker: string;

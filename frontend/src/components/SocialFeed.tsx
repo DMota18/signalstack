@@ -37,11 +37,10 @@ export default function SocialFeed({ ticker }: SocialFeedProps) {
   const { isDark } = useTheme();
   const [messages, setMessages] = useState<STMessage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [symbolInfo, setSymbolInfo] = useState<any>(null);
+  const [, setSymbolInfo] = useState<any>(null);
 
   const gold = isDark ? '#D4A843' : '#8B6914';
   const textMuted = isDark ? '#9A9A9D' : '#5A5A5D';
-  const border = isDark ? '#1A1A1D' : '#E8E6E1';
   const surface = isDark ? '#0C0C0E' : '#F8F7F4';
   const greenColor = isDark ? '#34C759' : '#28A745';
   const redColor = isDark ? '#FF453A' : '#DC3545';

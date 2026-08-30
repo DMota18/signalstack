@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { Treemap, ResponsiveContainer, Tooltip } from 'recharts';
 import { useTheme } from '../hooks/useTheme';
 import { useNavigate } from 'react-router-dom';
-import { getBrandColor } from '../lib/brandColors';
 
 interface PortfolioTreemapProps {
   holdings: any[];

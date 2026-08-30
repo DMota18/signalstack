@@ -1,6 +1,5 @@
-import { Routes, Route, Navigate, Link } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
-import { useTheme } from './hooks/useTheme';
 import AppShell from './components/AppShell';
 import LandingPage from './pages/LandingPage';
 import SignInPage from './pages/SignInPage';

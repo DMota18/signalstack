@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useTheme } from '../hooks/useTheme';
-import { useNavigate } from 'react-router-dom';
 import AddHoldingForm from './AddHoldingForm';
 import { Link2, PenLine, X, ArrowRight, Wallet } from 'lucide-react';
 import { api } from '../api/client';
@@ -12,7 +11,6 @@ interface OnboardingModalProps {
 
 export default function OnboardingModal({ onClose, onHoldingsAdded }: OnboardingModalProps) {
   const { isDark } = useTheme();
-  const navigate = useNavigate();
   const [step, setStep] = useState<'choose' | 'manual'>('choose');
   const [addCount, setAddCount] = useState(0);
 

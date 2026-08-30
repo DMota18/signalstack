@@ -4,11 +4,9 @@ import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
 import AlertCard from '../components/AlertCard';
 import PolymarketPanel from '../components/PolymarketPanel';
-import ProbabilityGauge from '../components/ProbabilityGauge';
 import {
-  Loader2, Clock, ExternalLink, TrendingUp, TrendingDown,
-  Briefcase, Globe, Activity, CalendarDays, Bell, BarChart3,
-  RefreshCw, Newspaper, Landmark, Users,
+  Loader2, ExternalLink, TrendingUp, TrendingDown, Activity, CalendarDays, Bell,
+  RefreshCw, Newspaper, Landmark,
 } from 'lucide-react';
 
 import { getLogoUrl } from '../lib/brandColors';

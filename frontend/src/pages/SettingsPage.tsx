@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
-import { Link2, Unlink, Sun, Moon, Bell, BellOff, Loader2, Check, RefreshCw, CreditCard, ExternalLink, Zap, Gift, Copy } from 'lucide-react';
+import { Link2, Unlink, Sun, Moon, Bell, BellOff, Loader2, Check, CreditCard, ExternalLink, Zap, Gift, Copy } from 'lucide-react';
 
 const sectorOptions = [
   { value: 'ai_semiconductors', label: 'AI / Semiconductors' },
@@ -599,7 +599,7 @@ function Section({ title, children, isDark, surface, border }: {
   );
 }
 
-function Field({ label, children, isDark, textMuted }: {
+function Field({ label, children, isDark: _isDark, textMuted }: {
   label: string; children: React.ReactNode; isDark: boolean; textMuted: string;
 }) {
   return (

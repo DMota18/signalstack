@@ -52,7 +52,7 @@ function confidenceBadge(market: PolymarketMarket, gold: string, textMuted: stri
 
 import ProbabilityGauge from './ProbabilityGauge';
 
-function ProbabilityBar({ pct, gold, isDark }: { pct: number; gold: string; isDark: boolean }) {
+function ProbabilityBar({ pct, gold: _gold, isDark: _isDark }: { pct: number; gold: string; isDark: boolean }) {
   return <ProbabilityGauge pct={pct} size={52} strokeWidth={4} />;
 }
 
