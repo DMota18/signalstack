@@ -41,8 +41,8 @@ When intelligence is generated (on-demand or scheduled), the system:
    | Agent | What It Does | Data Sources |
    |-------|-------------|--------------|
    | **Sentiment** | Scores news sentiment per ticker (-1.0 to 1.0), detects trend shifts | Finnhub, NewsAPI |
-   | **Polymarket** | Finds prediction market odds relevant to your holdings (earnings beats, macro events) | Polymarket Gamma API | Partially completed.
-   | **Insider** | Surfaces meaningful insider trades — cluster buying, large open-market purchases | SEC EDGAR (Form 4) | In development.
+   | **Polymarket** | Finds prediction market odds relevant to your holdings (earnings beats, macro events) — *partially implemented* | Polymarket Gamma API |
+   | **Insider** | Surfaces meaningful insider trades — cluster buying, large open-market purchases — *in development* | SEC EDGAR (Form 4) |
    | **Institutional** | Tracks 13F filings from major funds (Berkshire, Renaissance, Bridgewater) | SEC EDGAR (13F) |
    | **Macro** | Maps Fed rates, CPI, yield curve, unemployment to your specific holdings | FRED |
    | **Profile** | Generates educational research ideas based on your interests and risk appetite | Claude synthesis |
@@ -245,8 +245,8 @@ cd ~/signalstack
 
 ## File Counts
 
-- **65** Python modules (backend)
-- **41** React components/pages (frontend)
+- **63** Python modules (backend)
+- **36** React components/pages (frontend)
 - **13** Celery tasks
 - **6** specialist AI agents
 - **10** external API integrations
