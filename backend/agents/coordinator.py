@@ -168,28 +168,28 @@ listings. Signals available: 1 of 5 dimensions."
 # MAIN COORDINATOR FUNCTION
 # ============================================================================
 
-async def run_coordinator(user_id: str, model_override: str | None = None) -> dict:
-    """Run the full intelligence pipeline for a user.
+async def run_coordinator_events(user_id: str, model_override: str | None = None):
+    """Run the full coordinator pipeline, yielding progress events.
 
-    Args:
-        user_id: SignalStack user ID
-        model_override: If set, use this model instead of the default (for cost control)
+    This is the single implementation behind both the blocking
+    run_coordinator() and the SSE streaming endpoint. Events:
 
-    Returns:
-        {
-            "synthesis": dict,       # The structured synthesis output
-            "agent_results": dict,   # Per-agent status/timing
-            "total_tokens": int,
-            "duration_ms": int,
-        }
+        {"event": "status",           "data": {"message", "phase"}}
+        {"event": "agent_start",      "data": {"agent", "index", "total"}}
+        {"event": "agent_done",       "data": {"agent", "status", "duration_ms", "index"}}
+        {"event": "coordinator_done", "data": {"synthesis", "agent_results",
+                                               "total_tokens", "duration_ms"}}
+
+    The final event is always coordinator_done.
     """
     start_time = time.time()
 
     # 1. Build fresh user context (Domain 1.6 — never resume stale)
+    yield {"event": "status", "data": {"message": "Loading portfolio...", "phase": "context"}}
     ctx = await build_user_context(user_id)
 
     if not ctx.holdings:
-        return {
+        yield {"event": "coordinator_done", "data": {
             "synthesis": {
                 "portfolio_summary": {
                     "total_holdings": 0,
@@ -197,13 +197,14 @@ async def run_coordinator(user_id: str, model_override: str | None = None) -> di
                     "signals_unavailable": [{"dimension": "all", "reason": "No holdings synced"}],
                 },
                 "per_holding_intelligence": [],
-                "portfolio_level_insights": ["No holdings found. Connect a brokerage account to get started."],
+                "portfolio_level_insights": ["No holdings found. Connect a brokerage or add holdings manually."],
                 "disclaimer": DISCLAIMER,
             },
             "agent_results": {},
             "total_tokens": 0,
             "duration_ms": int((time.time() - start_time) * 1000),
-        }
+        }}
+        return
 
     # 2. Prepare holdings for subagents (explicit context passing)
     holdings_for_agents = ctx.holdings_for_subagent
@@ -213,15 +214,39 @@ async def run_coordinator(user_id: str, model_override: str | None = None) -> di
         "has_investor_profile": ctx.preferences.risk_appetite != "moderate" or bool(ctx.preferences.sector_interests),
     }
 
-    # 3. Run signal agents SEQUENTIALLY with delays (free tier rate limit safe)
+    # 3. Run all six subagents SEQUENTIALLY with delays (free tier rate limit safe)
     agent_results = {}
     agent_timings = {}
     INTER_AGENT_DELAY = 5  # seconds between agents to stay under rate limits
 
-    async def _run_agent(name, coro):
+    # Factories, not coroutines: nothing is created until its turn, so an
+    # early generator close never leaves un-awaited coroutines behind.
+    agent_factories = [
+        ("sentiment", lambda: run_sentiment_agent(holdings_for_agents, user_hook_context)),
+        ("polymarket", lambda: run_polymarket_agent(holdings_for_agents, ctx.upcoming_earnings, user_hook_context)),
+        ("insider", lambda: run_insider_agent(holdings_for_agents, user_hook_context)),
+        ("institutional", lambda: run_institutional_agent(holdings_for_agents, user_hook_context)),
+        ("macro", lambda: run_macro_agent(holdings_for_agents, None, user_hook_context)),
+        ("profile", lambda: run_profile_agent(
+            holdings_for_agents,
+            {
+                "risk_appetite": ctx.preferences.risk_appetite,
+                "sector_interests": ctx.preferences.sector_interests,
+                "discovery_mode": ctx.preferences.discovery_mode,
+            },
+            user_hook_context,
+        )),
+    ]
+    total_stages = len(agent_factories) + 1  # + synthesis
+
+    for i, (name, factory) in enumerate(agent_factories):
+        if i > 0:
+            await asyncio.sleep(INTER_AGENT_DELAY)
+        yield {"event": "agent_start", "data": {"agent": name, "index": i + 1, "total": total_stages}}
+
         t0 = time.time()
         try:
-            result = await coro
+            result = await factory()
             elapsed = int((time.time() - t0) * 1000)
             agent_timings[name] = {"status": "completed" if result.get("ok") else "failed", "duration_ms": elapsed}
             agent_results[name] = result
@@ -232,40 +257,15 @@ async def run_coordinator(user_id: str, model_override: str | None = None) -> di
             agent_results[name] = {"ok": False, "agent": name, "error": str(e)}
             logger.error(f"Agent {name} failed: {e}")
 
-    # Sequential dispatch with delays between each agent
-    agents = [
-        ("sentiment", run_sentiment_agent(holdings_for_agents, user_hook_context)),
-        ("polymarket", run_polymarket_agent(holdings_for_agents, ctx.upcoming_earnings, user_hook_context)),
-        ("insider", run_insider_agent(holdings_for_agents, user_hook_context)),
-        ("institutional", run_institutional_agent(holdings_for_agents, user_hook_context)),
-        ("macro", run_macro_agent(holdings_for_agents, None, user_hook_context)),
-    ]
+        yield {"event": "agent_done", "data": {
+            "agent": name,
+            "status": agent_timings[name]["status"],
+            "duration_ms": agent_timings[name]["duration_ms"],
+            "index": i + 1,
+        }}
 
-    for i, (name, coro) in enumerate(agents):
-        if i > 0:
-            await asyncio.sleep(INTER_AGENT_DELAY)
-        await _run_agent(name, coro)
-
-    # Run Profile Agent last
-    await asyncio.sleep(INTER_AGENT_DELAY)
-    t0 = time.time()
-    try:
-        profile_result = await run_profile_agent(
-            holdings_for_agents,
-            {
-                "risk_appetite": ctx.preferences.risk_appetite,
-                "sector_interests": ctx.preferences.sector_interests,
-                "discovery_mode": ctx.preferences.discovery_mode,
-            },
-            user_hook_context,
-        )
-        agent_timings["profile"] = {"status": "completed" if profile_result.get("ok") else "failed", "duration_ms": int((time.time() - t0) * 1000)}
-        agent_results["profile"] = profile_result
-    except Exception as e:
-        agent_timings["profile"] = {"status": "failed", "duration_ms": int((time.time() - t0) * 1000), "error": str(e)}
-        agent_results["profile"] = {"ok": False, "error": str(e)}
-
-    # 5. Build coordinator prompt with all subagent results
+    # 4. Build coordinator prompt with all subagent results
+    yield {"event": "agent_start", "data": {"agent": "synthesis", "index": total_stages, "total": total_stages}}
     subagent_summary = _format_subagent_results(agent_results)
     concentration_warnings = check_concentration_warnings(holdings_for_agents)
 
@@ -281,7 +281,7 @@ TASK: Synthesize all subagent results into a coherent portfolio intelligence rep
 Use the produce_synthesis tool to deliver the structured output.
 Reference actual holdings and position sizes. Call out conflicting signals explicitly."""
 
-    # 6. Run coordinator synthesis with produce_synthesis tool
+    # 5. Run coordinator synthesis with produce_synthesis tool
     synthesis_result = await run_agent_loop(
         system_prompt=COORDINATOR_SYSTEM,
         messages=[{"role": "user", "content": coordinator_user_msg}],
@@ -292,7 +292,7 @@ Reference actual holdings and position sizes. Call out conflicting signals expli
         tool_choice={"type": "tool", "name": "produce_synthesis"},
     )
 
-    # 7. Extract synthesis from tool results
+    # 6. Extract synthesis from tool results
     synthesis = None
     for tr in synthesis_result.get("tool_results", []):
         if tr.get("tool_name") == "produce_synthesis":
@@ -322,11 +322,11 @@ Reference actual holdings and position sizes. Call out conflicting signals expli
             "disclaimer": DISCLAIMER,
         }
 
-    # 8. Ensure disclaimer is present
+    # 7. Ensure disclaimer is present
     if "disclaimer" not in synthesis or synthesis["disclaimer"] != DISCLAIMER:
         synthesis["disclaimer"] = DISCLAIMER
 
-    # 9. Add concentration warnings
+    # 8. Add concentration warnings
     if concentration_warnings:
         existing = synthesis.get("portfolio_level_insights", [])
         synthesis["portfolio_level_insights"] = concentration_warnings + existing
@@ -335,12 +335,33 @@ Reference actual holdings and position sizes. Call out conflicting signals expli
     for ar in agent_results.values():
         total_tokens += ar.get("tokens_used", 0)
 
-    return {
+    yield {"event": "agent_done", "data": {
+        "agent": "synthesis", "status": "completed", "index": total_stages,
+    }}
+    yield {"event": "coordinator_done", "data": {
         "synthesis": synthesis,
         "agent_results": agent_timings,
         "total_tokens": total_tokens,
         "duration_ms": int((time.time() - start_time) * 1000),
-    }
+    }}
+
+
+async def run_coordinator(user_id: str, model_override: str | None = None) -> dict:
+    """Run the full intelligence pipeline for a user (blocking form).
+
+    Drains run_coordinator_events() and returns the final result:
+        {
+            "synthesis": dict,       # The structured synthesis output
+            "agent_results": dict,   # Per-agent status/timing
+            "total_tokens": int,
+            "duration_ms": int,
+        }
+    """
+    final: dict = {}
+    async for event in run_coordinator_events(user_id, model_override=model_override):
+        if event["event"] == "coordinator_done":
+            final = event["data"]
+    return final
 
 
 def _format_subagent_results(agent_results: dict) -> str:

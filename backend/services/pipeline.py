@@ -16,8 +16,9 @@ Pipeline:
 
 import json
 import logging
+import time
 
-from backend.agents.coordinator import COORDINATOR_SYSTEM, SYNTHESIS_TOOL, run_coordinator
+from backend.agents.coordinator import COORDINATOR_SYSTEM, SYNTHESIS_TOOL, run_coordinator_events
 from backend.agents.loop import run_agent_loop
 from backend.services.cost_control import (
     estimate_cost,
@@ -36,38 +37,37 @@ from backend.services.supabase import get_service_client
 logger = logging.getLogger("services.pipeline")
 
 
+def _now_ms() -> int:
+    return int(time.time() * 1000)
+
+
 # ============================================================================
 # MAIN PIPELINE ENTRY POINT
 # ============================================================================
 
-async def generate_intelligence(
+async def generate_intelligence_events(
     user_id: str,
     alert_type: str = "daily_digest",
     trigger_source: str = "scheduler",
-) -> dict:
-    """Run the full intelligence pipeline for a user.
+):
+    """Run the full intelligence pipeline, yielding progress events.
 
-    1. Run coordinator (dispatches subagents, produces synthesis)
-    2. Intercept output (advice filter, disclaimer)
-    3. Create alert record in Supabase
-    4. Return the alert for delivery
+    The single implementation behind the blocking generate_intelligence()
+    and the SSE streaming endpoint — so the output interceptor, the
+    reformulation loop, alert creation, and cost recording run on EVERY
+    delivery path, streamed or not.
 
-    Args:
-        user_id: SignalStack user ID
-        alert_type: Type of alert to create
-        trigger_source: What triggered this run (scheduler, user_request, price_monitor)
+    Re-yields the coordinator's status/agent_start/agent_done events and
+    finishes with:
 
-    Returns:
-        {
-            "alert_id": str,
-            "alert": dict,
-            "synthesis": dict,
-            "agent_results": dict,
-            "tokens_used": int,
-            "duration_ms": int,
-        }
+        {"event": "complete", "data": {alert_id, alert, title, synthesis,
+                                       agent_results, tokens_used,
+                                       duration_ms, model_used, cost_usd}}
     """
+    start_time = _now_ms()
+
     # 0. Check cost budget and select model
+    yield {"event": "status", "data": {"message": "Checking budget...", "phase": "init"}}
     model_decision = await select_model_for_user(user_id)
 
     if model_decision["use_cache"]:
@@ -75,7 +75,7 @@ async def generate_intelligence(
         cached = await get_cached_intelligence(user_id)
         if cached:
             logger.info(f"Serving cached intelligence for {user_id} (daily cap exceeded)")
-            return {
+            yield {"event": "complete", "data": {
                 "alert_id": cached.get("alert_id"),
                 "alert": {
                     "id": cached.get("alert_id"),
@@ -84,22 +84,33 @@ async def generate_intelligence(
                     "related_tickers": [],
                     "signals_used": [],
                 },
+                "title": cached.get("title", ""),
                 "synthesis": cached.get("synthesis", {}),
                 "agent_results": {},
                 "tokens_used": 0,
                 "duration_ms": 0,
                 "cached": True,
                 "cache_message": cached.get("message", ""),
-            }
+            }}
+            return
         # No cache available — allow one more run with fallback model
         logger.warning(f"No cached intelligence for {user_id}, allowing fallback model run")
 
-    # 1. Run the coordinator (with model override if budget constrained)
-    coord_result = await run_coordinator(
+    # 1. Run the coordinator (with model override if budget constrained),
+    # re-yielding its progress events
+    coord_result: dict = {}
+    coordinator = run_coordinator_events(
         user_id,
         model_override=model_decision["model"] if model_decision["reason"] != "within_budget" else None,
     )
+    async for event in coordinator:
+        if event["event"] == "coordinator_done":
+            coord_result = event["data"]
+        else:
+            yield event
     synthesis = coord_result.get("synthesis", {})
+
+    yield {"event": "status", "data": {"message": "Running compliance checks...", "phase": "compliance"}}
 
     # 2. Build a narrative string for the output interceptor
     narrative_parts = []
@@ -158,7 +169,7 @@ async def generate_intelligence(
     cost_usd = estimate_cost(model_used, tokens_used // 2, tokens_used // 2)  # Approximate split
     await record_job_cost(user_id, tokens_used, cost_usd)
 
-    return {
+    yield {"event": "complete", "data": {
         "alert_id": alert_id,
         "alert": {
             "id": alert_id,
@@ -167,13 +178,39 @@ async def generate_intelligence(
             "related_tickers": related_tickers,
             "signals_used": signals_used,
         },
+        "title": title,
         "synthesis": synthesis,
         "agent_results": coord_result.get("agent_results", {}),
         "tokens_used": tokens_used,
-        "duration_ms": coord_result.get("duration_ms", 0),
+        "duration_ms": _now_ms() - start_time,
         "model_used": model_used,
         "cost_usd": cost_usd,
-    }
+    }}
+
+
+async def generate_intelligence(
+    user_id: str,
+    alert_type: str = "daily_digest",
+    trigger_source: str = "scheduler",
+) -> dict:
+    """Run the full intelligence pipeline for a user (blocking form).
+
+    Drains generate_intelligence_events() and returns the final result:
+        {
+            "alert_id": str,
+            "alert": dict,
+            "synthesis": dict,
+            "agent_results": dict,
+            "tokens_used": int,
+            "duration_ms": int,
+            ...
+        }
+    """
+    result: dict = {}
+    async for event in generate_intelligence_events(user_id, alert_type, trigger_source):
+        if event["event"] == "complete":
+            result = event["data"]
+    return result
 
 
 # ============================================================================
