@@ -70,6 +70,8 @@ async def run_subagent(
                 "data": parsed,
                 "iterations": result.get("iterations", 0),
                 "tokens_used": result.get("tokens_used", 0),
+                "input_tokens": result.get("input_tokens", 0),
+                "output_tokens": result.get("output_tokens", 0),
             }
         except json.JSONDecodeError:
             # A subagent that returns prose instead of JSON has failed its
@@ -85,6 +87,8 @@ async def run_subagent(
                 "raw_text": text,
                 "iterations": result.get("iterations", 0),
                 "tokens_used": result.get("tokens_used", 0),
+                "input_tokens": result.get("input_tokens", 0),
+                "output_tokens": result.get("output_tokens", 0),
             }
 
     # No text — check if there were tool results

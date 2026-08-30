@@ -163,10 +163,13 @@ async def generate_intelligence_events(
         signals_used=signals_used,
     )
 
-    # 7. Record cost against user's daily budget
+    # 7. Record cost against user's daily budget, using the real
+    # input/output token split the agent loop tracked
     tokens_used = coord_result.get("total_tokens", 0)
+    input_tokens = coord_result.get("input_tokens", tokens_used // 2)
+    output_tokens = coord_result.get("output_tokens", tokens_used - tokens_used // 2)
     model_used = model_decision["model"]
-    cost_usd = estimate_cost(model_used, tokens_used // 2, tokens_used // 2)  # Approximate split
+    cost_usd = estimate_cost(model_used, input_tokens, output_tokens)
     await record_job_cost(user_id, tokens_used, cost_usd)
 
     yield {"event": "complete", "data": {

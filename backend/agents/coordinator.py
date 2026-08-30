@@ -332,8 +332,12 @@ Reference actual holdings and position sizes. Call out conflicting signals expli
         synthesis["portfolio_level_insights"] = concentration_warnings + existing
 
     total_tokens = synthesis_result.get("tokens_used", 0)
+    total_input = synthesis_result.get("input_tokens", 0)
+    total_output = synthesis_result.get("output_tokens", 0)
     for ar in agent_results.values():
         total_tokens += ar.get("tokens_used", 0)
+        total_input += ar.get("input_tokens", 0)
+        total_output += ar.get("output_tokens", 0)
 
     yield {"event": "agent_done", "data": {
         "agent": "synthesis", "status": "completed", "index": total_stages,
@@ -342,6 +346,8 @@ Reference actual holdings and position sizes. Call out conflicting signals expli
         "synthesis": synthesis,
         "agent_results": agent_timings,
         "total_tokens": total_tokens,
+        "input_tokens": total_input,
+        "output_tokens": total_output,
         "duration_ms": int((time.time() - start_time) * 1000),
     }}
 

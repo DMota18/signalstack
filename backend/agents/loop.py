@@ -65,6 +65,8 @@ async def run_agent_loop(
             "tool_results": [],    # All tool results collected during the loop
             "iterations": int,     # How many loop iterations ran
             "tokens_used": int,    # Total tokens consumed
+            "input_tokens": int,   # Input-side total (for accurate cost)
+            "output_tokens": int,  # Output-side total (for accurate cost)
             "stop_reason": str,    # Final stop reason
         }
     """
@@ -106,6 +108,8 @@ async def run_agent_loop(
                 "tool_results": all_tool_results,
                 "iterations": iteration,
                 "tokens_used": total_input_tokens + total_output_tokens,
+                "input_tokens": total_input_tokens,
+                "output_tokens": total_output_tokens,
                 "stop_reason": "error",
             }
 
@@ -129,6 +133,8 @@ async def run_agent_loop(
                 "tool_results": all_tool_results,
                 "iterations": iteration,
                 "tokens_used": total_input_tokens + total_output_tokens,
+                "input_tokens": total_input_tokens,
+                "output_tokens": total_output_tokens,
                 "stop_reason": "end_turn",
             }
 
@@ -232,6 +238,8 @@ async def run_agent_loop(
                 "tool_results": all_tool_results,
                 "iterations": iteration,
                 "tokens_used": total_input_tokens + total_output_tokens,
+                "input_tokens": total_input_tokens,
+                "output_tokens": total_output_tokens,
                 "stop_reason": stop_reason,
             }
 
@@ -242,6 +250,8 @@ async def run_agent_loop(
         "tool_results": all_tool_results,
         "iterations": iteration,
         "tokens_used": total_input_tokens + total_output_tokens,
+        "input_tokens": total_input_tokens,
+        "output_tokens": total_output_tokens,
         "stop_reason": "max_iterations",
     }
 
