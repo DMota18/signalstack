@@ -5,6 +5,19 @@ Provides mock users, holdings, Supabase clients, and httpx responses
 for all test files. All external APIs are mocked — no real calls.
 """
 
+import os
+
+# Fake configuration so the suite runs from a fresh clone with no .env,
+# and so tests can never pick up real credentials. Real environment
+# variables take precedence over .env in pydantic-settings, so these
+# also shadow a developer's local .env under pytest.
+os.environ.setdefault("SUPABASE_URL", "https://test-project.supabase.co")
+os.environ.setdefault("SUPABASE_ANON_KEY", "test-anon-key")
+os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key")
+os.environ.setdefault("ENCRYPTION_KEY", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
+os.environ.setdefault("ANTHROPIC_API_KEY", "test-anthropic-key")
+os.environ.setdefault("SUPABASE_JWT_SECRET", "test-jwt-secret")
+
 import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch

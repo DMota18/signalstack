@@ -1,0 +1,5 @@
+# Test and development dependencies
+# Install with: pip install -r backend/requirements.txt -r requirements-dev.txt
+pytest>=9.0
+pytest-asyncio>=1.0
+respx>=0.22

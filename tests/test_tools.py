@@ -95,20 +95,27 @@ class TestSearchPolymarketMarkets:
 
     @pytest.mark.asyncio
     async def test_search_success(self, mock_settings):
+        # Gamma /events shape: events carry their markets nested
         mock_response = {
             "status_code": 200,
             "data": [
                 {
-                    "question": "Will NVDA beat Q2 2026 earnings?",
-                    "description": "NVIDIA earnings prediction",
-                    "outcomePrices": '["0.73", "0.27"]',
-                    "volume24hr": 50000,
-                    "liquidity": 25000,
-                    "endDate": "2026-04-20T00:00:00Z",
-                    "category": "crypto",
-                    "slug": "nvda-q2-earnings",
-                    "conditionId": "cond_123",
-                    "active": True,
+                    "title": "NVDA Q2 2026 Earnings",
+                    "slug": "nvda-q2-2026-earnings",
+                    "markets": [
+                        {
+                            "question": "Will NVDA beat Q2 2026 earnings?",
+                            "description": "NVIDIA earnings prediction",
+                            "outcomePrices": '["0.73", "0.27"]',
+                            "volume24hr": 50000,
+                            "liquidity": 25000,
+                            "endDate": "2026-04-20T00:00:00Z",
+                            "category": "crypto",
+                            "slug": "nvda-q2-earnings",
+                            "conditionId": "cond_123",
+                            "active": True,
+                        },
+                    ],
                 },
             ],
         }

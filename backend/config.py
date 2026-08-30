@@ -4,12 +4,18 @@ Loads environment variables and provides typed settings.
 All secrets come from .env — never hardcoded.
 """
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
 
     # --- Supabase ---
     supabase_url: str
@@ -86,11 +92,6 @@ class Settings(BaseSettings):
     # --- Claude API Cost Controls ---
     claude_daily_cost_cap_usd: float = 0.50   # Per-user daily spend cap
     claude_fallback_model: str = "claude-haiku-4-5-20251001"
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
 
 
 @lru_cache()
