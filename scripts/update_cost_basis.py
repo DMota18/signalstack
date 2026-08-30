@@ -1,7 +1,7 @@
 """
-Quick script to populate cost basis for manual holdings.
-Uses yfinance to get a rough 30-day average price as an approximate cost basis.
-Run: py -3.13 update_cost_basis.py
+Interactive script to populate cost basis for manual holdings.
+Prompts for the average cost basis of each holding that has none set.
+Run: python -m scripts.update_cost_basis
 """
 import asyncio
 from backend.services.supabase import get_service_client
