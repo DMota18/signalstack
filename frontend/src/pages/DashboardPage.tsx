@@ -28,11 +28,11 @@ function signalColor(signal: string, isDark: boolean): string {
 
 function signalLabel(signal: string): string {
   const labels: Record<string, string> = {
-    strongly_bullish: 'STRONG BUY SIGNAL',
+    strongly_bullish: 'STRONGLY BULLISH',
     bullish: 'BULLISH',
     neutral: 'NEUTRAL',
     bearish: 'BEARISH',
-    strongly_bearish: 'STRONG SELL SIGNAL',
+    strongly_bearish: 'STRONGLY BEARISH',
     conflicting: 'CONFLICTING',
     insufficient_data: 'LOW DATA',
   };

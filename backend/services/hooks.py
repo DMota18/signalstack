@@ -166,12 +166,12 @@ async def post_execution_hook(tool_name: str, tool_result: dict) -> dict:
     result = _sanitize_financial_data(result)
 
     # --- Redact PII ---
-    result = _redact_pii(result)
+    result = _redact_pii(result, aggressive=tool_name in _BROKERAGE_TOOLS)
 
     # --- Inject compliance metadata ---
     result["_compliance"] = {
         "disclaimer_required": True,
-        "advice_flag": False,
+        "advice_flag": _contains_advice_language(result),
         "processed_at": datetime.now(UTC).isoformat(),
     }
 
@@ -247,9 +247,28 @@ _PII_KEYS = frozenset({
     "routing_number", "bank_account",
 })
 
+# Keys whose string values may embed an account number in free text
+_ACCOUNT_KEY_HINT = re.compile(r"account|acct|routing|iban", re.IGNORECASE)
 
-def _redact_pii(data: dict) -> dict:
-    """Remove PII fields and redact patterns from brokerage data."""
+# Tools returning brokerage data: every string value gets the aggressive
+# numeric-pattern scrub. Market-data tools do not — an 8-16 digit number
+# there is a volume, market cap, or millisecond timestamp, not an account.
+_BROKERAGE_TOOLS = frozenset({
+    "get_account_holdings",
+    "get_account_balances",
+    "get_account_detail",
+    "list_accounts",
+    "sync_holdings",
+})
+
+
+def _redact_pii(data: dict, aggressive: bool = False) -> dict:
+    """Remove PII fields and redact patterns from tool results.
+
+    The bare 8-16 digit account pattern is applied to every string only
+    for brokerage tools (aggressive=True) — elsewhere it is limited to
+    account-ish keys so market caps and volumes survive.
+    """
     for key in list(data.keys()):
         if key.lower() in _PII_KEYS:
             data[key] = "[REDACTED]"
@@ -258,15 +277,16 @@ def _redact_pii(data: dict) -> dict:
         val = data[key]
         if isinstance(val, str):
             val = _SSN_PATTERN.sub("[SSN_REDACTED]", val)
-            val = _ACCOUNT_PATTERN.sub("[ACCT_REDACTED]", val)
+            if aggressive or _ACCOUNT_KEY_HINT.search(key):
+                val = _ACCOUNT_PATTERN.sub("[ACCT_REDACTED]", val)
             # Only redact emails in brokerage context, not in user profiles
             if key not in ("email", "user_email"):
                 val = _EMAIL_PATTERN.sub("[EMAIL_REDACTED]", val)
             data[key] = val
         elif isinstance(val, dict):
-            data[key] = _redact_pii(val)
+            data[key] = _redact_pii(val, aggressive)
         elif isinstance(val, list):
-            data[key] = [_redact_pii(item) if isinstance(item, dict) else item for item in val]
+            data[key] = [_redact_pii(item, aggressive) if isinstance(item, dict) else item for item in val]
 
     return data
 
@@ -278,15 +298,51 @@ def _redact_pii(data: dict) -> dict:
 # The disclaimer appended to every user-facing output
 DISCLAIMER = "This is market intelligence for educational purposes, not investment advice."
 
-# Phrases that indicate investment advice — blocked from output
+# Phrases that indicate investment advice — blocked from output.
+# Kept deliberately broader than the model's prompt rules: over-triggering
+# costs a reformulation pass, under-triggering delivers advice to a user.
 _ADVICE_PATTERNS = re.compile(
-    r"\b(you\s+should\s+(buy|sell|invest|hold|short|sell\s+off|dump|load\s+up))"
-    r"|\b(i\s+recommend\s+(buying|selling|investing|holding))"
-    r"|\b(we\s+recommend)"
-    r"|\b(buy\s+now|sell\s+now|strong\s+buy|must\s+buy|definitely\s+(buy|sell))"
-    r"|\b(my\s+recommendation\s+is)",
-    re.IGNORECASE,
+    r"\b(you\s+should\s+(?:definitely\s+|probably\s+)?"
+    r"(?:not\s+)?(buy|sell|invest|hold|short|sell\s+off|dump|load\s+up|"
+    r"add|trim|exit|reduce|increase|take\s+profits?|rebalance|diversify))"
+    r"|\b(i\s+recommend)\b"
+    r"|\b(we\s+recommend)\b"
+    r"|\b(my\s+recommendation\s+is)"
+    r"|\b(buy\s+now|sell\s+now|must\s+(?:buy|sell)|definitely\s+(?:buy|sell))"
+    r"|\b(strong\s+(?:buy|sell))\b(?!-)"  # not "strong sell-off"
+    r"|\b(consider\s+(?:buying|selling|shorting|adding\s+to|trimming|exiting))"
+    r"|\b(time\s+to\s+(?:buy|sell))\b"
+    r"|\b(load\s+up\s+on|dump\s+your)"
+    # Imperative at the start of a sentence: "Buy NVDA.", "Sell your GLD."
+    r"|(?:^|[.!?:]\s+)(buy|sell)\s+(?:more\s+|some\s+|your\s+)?[A-Za-z]{1,5}\b",
+    re.IGNORECASE | re.MULTILINE,
 )
+
+
+def _contains_advice_language(data: dict | str) -> bool:
+    """True if any string value in the payload trips the advice filter."""
+    if isinstance(data, str):
+        return bool(_ADVICE_PATTERNS.search(data))
+    for key, val in data.items():
+        if key == "_compliance":
+            continue
+        if isinstance(val, str) and _ADVICE_PATTERNS.search(val):
+            return True
+        if isinstance(val, dict) and _contains_advice_language(val):
+            return True
+        if isinstance(val, list) and any(
+            _contains_advice_language(item)
+            for item in val
+            if isinstance(item, (dict, str))
+        ):
+            return True
+    return False
+
+
+def strip_advice_language(text: str) -> str:
+    """Regex fallback when reformulation fails: replace advice phrasing so
+    the output is guaranteed to pass intercept_output()."""
+    return _ADVICE_PATTERNS.sub(" [phrasing removed by compliance filter] ", text)
 
 
 def intercept_output(output_text: str) -> tuple[bool, str, list[str]]:

@@ -25,7 +25,12 @@ from backend.services.cost_control import (
     record_job_cost,
     select_model_for_user,
 )
-from backend.services.hooks import DISCLAIMER, build_reformulation_prompt, intercept_output
+from backend.services.hooks import (
+    DISCLAIMER,
+    build_reformulation_prompt,
+    intercept_output,
+    strip_advice_language,
+)
 from backend.services.supabase import get_service_client
 
 logger = logging.getLogger("services.pipeline")
@@ -121,7 +126,10 @@ async def generate_intelligence(
             # Final fallback: strip advice language with regex
             logger.warning("Reformulation failed after max attempts, falling back to regex strip")
             for holding in synthesis.get("per_holding_intelligence", []):
-                holding["narrative"] = _strip_advice_language(holding.get("narrative", ""))
+                holding["narrative"] = strip_advice_language(holding.get("narrative", ""))
+            synthesis["portfolio_level_insights"] = [
+                strip_advice_language(i) for i in synthesis.get("portfolio_level_insights", [])
+            ]
 
     # 4. Extract tickers and signals for alert metadata
     related_tickers = [
@@ -448,16 +456,3 @@ def _signal_to_emoji(signal: str) -> str:
     return mapping.get(signal, "~")
 
 
-def _strip_advice_language(text: str) -> str:
-    """Remove advice-like phrases from text as a fallback when
-    the output interceptor catches violations."""
-    import re
-    patterns = [
-        r"\b(you\s+should\s+(buy|sell|invest|hold))\b",
-        r"\b(i\s+recommend\s+(buying|selling))\b",
-        r"\b(we\s+recommend)\b",
-        r"\b(buy\s+now|sell\s+now|strong\s+buy)\b",
-    ]
-    for p in patterns:
-        text = re.sub(p, "[signal suggests]", text, flags=re.IGNORECASE)
-    return text

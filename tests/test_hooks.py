@@ -17,6 +17,7 @@ from backend.services.hooks import (
     intercept_output,
     post_execution_hook,
     pre_execution_hook,
+    strip_advice_language,
 )
 from tests.conftest import make_user_context
 
@@ -308,3 +309,117 @@ class TestConcentrationWarnings:
     def test_concentration_warning_handles_empty_holdings(self):
         warnings = check_concentration_warnings([])
         assert len(warnings) == 0
+
+
+# ============================================================================
+# WIDENED ADVICE FILTER
+# ============================================================================
+
+class TestAdviceFilterWidenedPatterns:
+    """Bare imperatives and unhedged recommendations must be caught,
+    while ordinary market commentary passes."""
+
+    @pytest.mark.parametrize("text", [
+        "Buy NVDA before earnings.",
+        "I recommend NVDA at these levels.",
+        "Consider selling your GLD position into strength.",
+        "It is time to buy the dip here.",
+        "You should take profits on AAPL.",
+        "You should not sell yet.",
+        "Analyst consensus: strong buy.",
+        "Load up on semis before the print.",
+        "My recommendation is to rotate into bonds.",
+        "Must buy at this valuation.",
+    ])
+    def test_advice_phrases_blocked(self, text):
+        passed, _, violations = intercept_output(text)
+        assert passed is False
+        assert violations
+
+    @pytest.mark.parametrize("text", [
+        "The data suggests bullish momentum for NVDA.",
+        "A strong sell-off hit tech names midday.",
+        "Insiders bought $1.4M in shares this week.",
+        "Buyback activity accelerated in Q2.",
+        "Sell pressure increased after the downgrade.",
+        "RSI indicates the stock is overbought.",
+        "Selling by institutions slowed this quarter.",
+        "The signal is strongly bullish across dimensions.",
+        "Historically this pattern has preceded gains.",
+    ])
+    def test_market_commentary_passes(self, text):
+        passed, _, violations = intercept_output(text)
+        assert passed is True
+        assert violations == []
+
+
+class TestStripAdviceLanguage:
+    """The regex fallback must produce output that passes the interceptor."""
+
+    def test_stripped_output_passes_interceptor(self):
+        text = "Buy NVDA before earnings. I recommend selling GLD now. You should take profits."
+        stripped = strip_advice_language(text)
+        passed, _, violations = intercept_output(stripped)
+        assert passed is True
+        assert violations == []
+
+    def test_strip_leaves_compliant_text_alone(self):
+        text = "The data suggests bullish momentum for NVDA."
+        assert strip_advice_language(text) == text
+
+
+# ============================================================================
+# PII REDACTION SCOPING
+# ============================================================================
+
+class TestPiiRedactionScoping:
+    """The bare account-number pattern applies to brokerage tools and
+    account-ish keys — market data must survive untouched."""
+
+    @pytest.mark.asyncio
+    async def test_market_cap_not_redacted_for_market_tools(self):
+        result = await post_execution_hook("get_company_profile", {
+            "summary": "Market cap stands at 2210000000000 with rising volume.",
+        })
+        assert "2210000000000" in result["summary"]
+        assert "[ACCT_REDACTED]" not in result["summary"]
+
+    @pytest.mark.asyncio
+    async def test_brokerage_tool_strings_are_scrubbed(self):
+        result = await post_execution_hook("get_account_holdings", {
+            "description": "Transfers from 12345678901 settle in 2 days.",
+        })
+        assert "12345678901" not in result["description"]
+        assert "[ACCT_REDACTED]" in result["description"]
+
+    @pytest.mark.asyncio
+    async def test_accountish_key_scrubbed_on_any_tool(self):
+        result = await post_execution_hook("get_price_data", {
+            "account_summary": "Linked account 987654321012 is active.",
+        })
+        assert "[ACCT_REDACTED]" in result["account_summary"]
+
+    @pytest.mark.asyncio
+    async def test_ssn_pattern_redacted_everywhere(self):
+        result = await post_execution_hook("get_news_sentiment", {
+            "note": "Leaked filing contained 123-45-6789 in the exhibit.",
+        })
+        assert "123-45-6789" not in result["note"]
+
+
+class TestComplianceMetadataAdviceFlag:
+    """advice_flag reflects the payload instead of being hardcoded False."""
+
+    @pytest.mark.asyncio
+    async def test_advice_flag_true_when_result_contains_advice(self):
+        result = await post_execution_hook("get_news_sentiment", {
+            "headline": "Analyst note: strong buy on NVDA",
+        })
+        assert result["_compliance"]["advice_flag"] is True
+
+    @pytest.mark.asyncio
+    async def test_advice_flag_false_for_clean_result(self):
+        result = await post_execution_hook("get_news_sentiment", {
+            "headline": "NVDA rises on data center demand",
+        })
+        assert result["_compliance"]["advice_flag"] is False

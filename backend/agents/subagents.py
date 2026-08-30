@@ -72,11 +72,17 @@ async def run_subagent(
                 "tokens_used": result.get("tokens_used", 0),
             }
         except json.JSONDecodeError:
+            # A subagent that returns prose instead of JSON has failed its
+            # contract. Reporting it as a success would corrupt the
+            # 5/5=completed / partial / failed job accounting and feed the
+            # coordinator an unusable SUCCESS section.
             logger.warning(f"Subagent {agent_name} returned non-JSON: {text[:200]}")
             return {
-                "ok": True,
+                "ok": False,
                 "agent": agent_name,
-                "data": {"raw_text": text},
+                "error": "invalid_json",
+                "message": f"Subagent {agent_name} returned prose instead of structured JSON",
+                "raw_text": text,
                 "iterations": result.get("iterations", 0),
                 "tokens_used": result.get("tokens_used", 0),
             }
