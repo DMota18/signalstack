@@ -2,178 +2,19 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
 import { LightweightCharts, loadLightweightCharts } from '../lib/charts';
-import { formatCurrency, formatPercent } from '../lib/format';
+import { formatCurrency } from '../lib/format';
+import { Loader2 } from 'lucide-react';
 import {
-  X, Loader2, CandlestickChart, BarChart3, Activity, LineChart,
-  Maximize2, Minimize2,
-} from 'lucide-react';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-type Timeframe = '1D' | '1W' | '1M' | '3M' | 'YTD' | '1Y' | 'ALL' | 'CUSTOM';
-type ChartMode = 'area' | 'candle' | 'line' | 'heikin_ashi';
-type ViewMode = 'all' | 'equities' | 'crypto' | 'etfs';
-
-interface Indicator {
-  key: string;
-  label: string;
-  color: string;
-  active: boolean;
-}
-
-interface SavedView {
-  name: string;
-  timeframe: Timeframe;
-  viewMode: ViewMode;
-}
-
-interface CrosshairInfo {
-  time: string;
-  value: number;
-  open?: number;
-  high?: number;
-  low?: number;
-  close?: number;
-  volume?: number;
-  sma20?: number;
-  ema50?: number;
-  bbUpper?: number;
-  bbLower?: number;
-  rsi?: number;
-  periodReturn?: number;   // % from start to hovered point
-  dailyChange?: number;    // % from previous point
-}
-
-// ─── Utils ───────────────────────────────────────────────────────────────────
-
-const CRYPTO_SET = new Set(['BTC','ETH','SOL','XRP','DOGE','ADA','DOT','AVAX','MATIC','LINK','BTC-USD','ETH-USD','SOL-USD','XRP-USD','DOGE-USD']);
-const ETF_SET = new Set(['SPY','QQQ','VTI','VOO','IWM','GLD','SLV','ARKK','XLF','XLE','XLK','SCHD','VGT','DIA','IBIT','BITO']);
-
-function classifyHolding(h: any): string {
-  const t = (h.ticker || '').toUpperCase();
-  if (CRYPTO_SET.has(t)) return 'crypto';
-  if (ETF_SET.has(t)) return 'etfs';
-  return 'equities';
-}
-
-function labelToBusinessDay(label: string, idx: number, total: number, timestamp?: number): string {
-  // Primary path: use timestamp if valid
-  if (timestamp && timestamp > 0) {
-    const d = new Date(timestamp * 1000);
-    if (!isNaN(d.getTime())) {
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }
-  }
-  // Fallback: parse the label string
-  const d = new Date(label);
-  if (!isNaN(d.getTime()) && d.getFullYear() > 2000) {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }
-  // Last resort: offset from today
-  const base = new Date();
-  base.setDate(base.getDate() - (total - 1 - idx));
-  return `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}-${String(base.getDate()).padStart(2, '0')}`;
-}
-
-function calcLocalStdDev(values: number[], center: number, windowRadius: number): number {
-  const start = Math.max(0, center - windowRadius);
-  const end = Math.min(values.length - 1, center + windowRadius);
-  const slice = values.slice(start, end + 1);
-  if (slice.length < 2) return 0;
-  const mean = slice.reduce((s, v) => s + v, 0) / slice.length;
-  const variance = slice.reduce((s, v) => s + (v - mean) ** 2, 0) / slice.length;
-  return Math.sqrt(variance);
-}
-
-function fmtDate(dateStr: string): string {
-  try { return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); }
-  catch { return dateStr; }
-}
-
-function fmtPrice(v: number): string {
-  return v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-// ─── Technical indicator calculations ────────────────────────────────────────
-
-function calcSMA(data: { value: number }[], period: number): (number | null)[] {
-  return data.map((_, i) => {
-    if (i < period - 1) return null;
-    const sum = data.slice(i - period + 1, i + 1).reduce((s, d) => s + d.value, 0);
-    return sum / period;
-  });
-}
-
-function calcEMA(data: { value: number }[], period: number): (number | null)[] {
-  const k = 2 / (period + 1);
-  const result: (number | null)[] = [];
-  let ema: number | null = null;
-  for (let i = 0; i < data.length; i++) {
-    if (i < period - 1) { result.push(null); continue; }
-    if (ema === null) {
-      ema = data.slice(0, period).reduce((s, d) => s + d.value, 0) / period;
-    } else {
-      ema = data[i].value * k + ema * (1 - k);
-    }
-    result.push(ema);
-  }
-  return result;
-}
-
-function calcBollingerBands(data: { value: number }[], period: number, stdDev: number): { upper: (number | null)[]; lower: (number | null)[]; mid: (number | null)[] } {
-  const mid = calcSMA(data, period);
-  const upper: (number | null)[] = [];
-  const lower: (number | null)[] = [];
-  for (let i = 0; i < data.length; i++) {
-    if (mid[i] === null) { upper.push(null); lower.push(null); continue; }
-    const slice = data.slice(i - period + 1, i + 1).map(d => d.value);
-    const mean = mid[i]!;
-    const variance = slice.reduce((s, v) => s + (v - mean) ** 2, 0) / period;
-    const sd = Math.sqrt(variance) * stdDev;
-    upper.push(mean + sd);
-    lower.push(mean - sd);
-  }
-  return { upper, lower, mid };
-}
-
-function calcRSI(data: { value: number }[], period: number = 14): (number | null)[] {
-  const result: (number | null)[] = [];
-  let avgGain = 0, avgLoss = 0;
-  for (let i = 0; i < data.length; i++) {
-    if (i === 0) { result.push(null); continue; }
-    const change = data[i].value - data[i - 1].value;
-    const gain = change > 0 ? change : 0;
-    const loss = change < 0 ? -change : 0;
-    if (i < period) { avgGain += gain; avgLoss += loss; result.push(null); continue; }
-    if (i === period) {
-      avgGain = (avgGain + gain) / period;
-      avgLoss = (avgLoss + loss) / period;
-    } else {
-      avgGain = (avgGain * (period - 1) + gain) / period;
-      avgLoss = (avgLoss * (period - 1) + loss) / period;
-    }
-    const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-    result.push(100 - (100 / (1 + rs)));
-  }
-  return result;
-}
-
-function toHeikinAshi(candles: any[]): any[] {
-  const ha: any[] = [];
-  for (let i = 0; i < candles.length; i++) {
-    const c = candles[i];
-    const haClose = (c.open + c.high + c.low + c.close) / 4;
-    const haOpen = i === 0 ? (c.open + c.close) / 2 : (ha[i - 1].open + ha[i - 1].close) / 2;
-    ha.push({
-      time: c.time,
-      open: haOpen,
-      close: haClose,
-      high: Math.max(c.high, haOpen, haClose),
-      low: Math.min(c.low, haOpen, haClose),
-    });
-  }
-  return ha;
-}
+  classifyHolding, labelToBusinessDay, calcLocalStdDev,
+  calcSMA, calcEMA, calcBollingerBands, calcRSI, toHeikinAshi,
+} from './portfolio-chart/indicators';
+import { fmtDate } from './portfolio-chart/format';
+import type {
+  Timeframe, ChartMode, ViewMode, Indicator, SavedView, CrosshairInfo, ChartTheme,
+} from './portfolio-chart/types';
+import ChartLegend from './portfolio-chart/ChartLegend';
+import ChartToolbar from './portfolio-chart/ChartToolbar';
+import ChartFooter from './portfolio-chart/ChartFooter';
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
@@ -202,7 +43,7 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
     { key: 'sma20', label: 'SMA 20', color: '#5AC8FA', active: false },
     { key: 'ema50', label: 'EMA 50', color: '#AF52DE', active: false },
     { key: 'bb', label: 'BB(20,2)', color: '#FF9500', active: false },
-    { key: 'vol', label: '\u0394%', color: '#8A8A8D', active: true },
+    { key: 'vol', label: 'Δ%', color: '#8A8A8D', active: true },
   ]);
 
   const [savedViews, setSavedViews] = useState<SavedView[]>(() => {
@@ -221,6 +62,11 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
   const redColor = isDark ? '#FF453A' : '#DC3545';
   const chartBg = isDark ? '#0A0A0B' : '#FAFAF8';
   const gridColor = isDark ? '#111113' : '#F0EEE8';
+
+  const theme: ChartTheme = {
+    isDark, gold, textPrimary, textMuted, textSecondary,
+    border, inputBg, inputBorder, greenColor, redColor,
+  };
 
   const showVol = indicators.find(i => i.key === 'vol')?.active ?? false;
   const showSMA = indicators.find(i => i.key === 'sma20')?.active ?? false;
@@ -688,14 +534,6 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
 
   // ── Render ───────────────────────────────────────────────────────────────
 
-  const timeframes: Timeframe[] = ['1D', '1W', '1M', '3M', 'YTD', '1Y', 'ALL', 'CUSTOM'];
-  const chartModes: { mode: ChartMode; icon: any; tip: string }[] = [
-    { mode: 'area', icon: Activity, tip: 'Area' },
-    { mode: 'candle', icon: CandlestickChart, tip: 'Candle' },
-    { mode: 'line', icon: LineChart, tip: 'Line' },
-    { mode: 'heikin_ashi', icon: BarChart3, tip: 'Heikin-Ashi' },
-  ];
-
   const saveCurrentView = () => {
     const name = prompt('Name this view:');
     if (name) {
@@ -705,215 +543,50 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
     }
   };
 
+  const deleteView = (i: number) => {
+    const u = savedViews.filter((_, j) => j !== i);
+    setSavedViews(u);
+    localStorage.setItem('ss_saved_views', JSON.stringify(u));
+  };
+
   return (
     <div style={{ background: chartBg }}>
 
       {/* ═══ DATA LEGEND (Bloomberg-style) ═══ */}
-      <div className="px-4 pt-4 pb-2">
-        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-2">
-          {/* Left: Price + Change */}
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="font-numeric text-2xl font-medium" style={{ color: textPrimary }}>
-                {formatCurrency(displayValue)}
-              </span>
-              <span className="text-sm font-numeric" style={{ color: displayChange >= 0 ? greenColor : redColor }}>
-                {displayChange >= 0 ? '+' : ''}{fmtPrice(Math.abs(displayChange))}
-                {' '}({formatPercent(displayPct, { signed: true })})
-              </span>
-              {crosshairInfo?.time && (
-                <span className="text-[10px] font-mono" style={{ color: textMuted }}>{crosshairInfo.time}</span>
-              )}
-            </div>
-
-            {/* OHLC on crosshair */}
-            {crosshairInfo && (chartMode === 'candle' || chartMode === 'heikin_ashi') && crosshairInfo.open != null && (
-              <div className="flex gap-3 mt-1">
-                <span className="text-[10px] font-mono" style={{ color: textMuted }}>
-                  O <span style={{ color: textSecondary }}>{fmtPrice(crosshairInfo.open)}</span>
-                </span>
-                <span className="text-[10px] font-mono" style={{ color: textMuted }}>
-                  H <span style={{ color: greenColor }}>{fmtPrice(crosshairInfo.high!)}</span>
-                </span>
-                <span className="text-[10px] font-mono" style={{ color: textMuted }}>
-                  L <span style={{ color: redColor }}>{fmtPrice(crosshairInfo.low!)}</span>
-                </span>
-                <span className="text-[10px] font-mono" style={{ color: textMuted }}>
-                  C <span style={{ color: textSecondary }}>{fmtPrice(crosshairInfo.close!)}</span>
-                </span>
-              </div>
-            )}
-
-            {/* Period return + daily change on crosshair */}
-            {crosshairInfo && (
-              <div className="flex gap-3 mt-0.5 flex-wrap">
-                {crosshairInfo.periodReturn != null && (
-                  <span className="text-[9px] font-mono" style={{ color: crosshairInfo.periodReturn >= 0 ? greenColor : redColor }}>
-                    Period {formatPercent(crosshairInfo.periodReturn, { signed: true })}
-                  </span>
-                )}
-                {crosshairInfo.dailyChange != null && (
-                  <span className="text-[9px] font-mono" style={{ color: crosshairInfo.dailyChange >= 0 ? greenColor : redColor }}>
-                    Chg {formatPercent(crosshairInfo.dailyChange, { signed: true })}
-                  </span>
-                )}
-                {crosshairInfo.volume != null && (
-                  <span className="text-[9px] font-mono" style={{ color: textMuted }}>
-                    {'\u0394'}% {crosshairInfo.volume.toFixed(2)}
-                  </span>
-                )}
-              </div>
-            )}
-
-            {/* Indicator values on crosshair */}
-            <div className="flex gap-3 mt-0.5 flex-wrap">
-              {crosshairInfo?.sma20 != null && (
-                <span className="text-[9px] font-mono" style={{ color: '#5AC8FA' }}>SMA20 {fmtPrice(crosshairInfo.sma20)}</span>
-              )}
-              {crosshairInfo?.ema50 != null && (
-                <span className="text-[9px] font-mono" style={{ color: '#AF52DE' }}>EMA50 {fmtPrice(crosshairInfo.ema50)}</span>
-              )}
-              {crosshairInfo?.bbUpper != null && (
-                <span className="text-[9px] font-mono" style={{ color: '#FF9500' }}>BB {fmtPrice(crosshairInfo.bbLower!)}–{fmtPrice(crosshairInfo.bbUpper)}</span>
-              )}
-              {crosshairInfo?.rsi != null && (
-                <span className="text-[9px] font-mono" style={{ color: '#FFD60A' }}>RSI {crosshairInfo.rsi.toFixed(1)}</span>
-              )}
-            </div>
-          </div>
-
-          {/* Right: Stats badges */}
-          {holdingStats && (
-            <div className="flex gap-1.5 flex-wrap">
-              <div className="px-2 py-1 rounded" style={{ background: inputBg }}>
-                <p className="text-[7px] font-mono uppercase tracking-wider" style={{ color: textMuted }}>Day P&L</p>
-                <p className="text-[11px] font-numeric font-medium" style={{ color: holdingStats.totalDayChange >= 0 ? greenColor : redColor }}>
-                  {(holdingStats.totalDayChange >= 0 ? '+' : '-') + formatCurrency(Math.abs(holdingStats.totalDayChange), 0)}
-                </p>
-              </div>
-              <div className="px-2 py-1 rounded" style={{ background: inputBg }}>
-                <p className="text-[7px] font-mono uppercase tracking-wider" style={{ color: textMuted }}>High</p>
-                <p className="text-[11px] font-numeric" style={{ color: greenColor }}>{formatCurrency(holdingStats.high)}</p>
-              </div>
-              <div className="px-2 py-1 rounded" style={{ background: inputBg }}>
-                <p className="text-[7px] font-mono uppercase tracking-wider" style={{ color: textMuted }}>Low</p>
-                <p className="text-[11px] font-numeric" style={{ color: redColor }}>{formatCurrency(holdingStats.low)}</p>
-              </div>
-              <div className="px-2 py-1 rounded" style={{ background: inputBg }}>
-                <p className="text-[7px] font-mono uppercase tracking-wider" style={{ color: textMuted }}>Positions</p>
-                <p className="text-[11px] font-numeric" style={{ color: textSecondary }}>{filteredHoldings.length}</p>
-              </div>
-              {portfolioMetrics && (
-                <>
-                  <div className="px-2 py-1 rounded" style={{ background: inputBg }}>
-                    <p className="text-[7px] font-mono uppercase tracking-wider" style={{ color: textMuted }}>Max DD</p>
-                    <p className="text-[11px] font-numeric" style={{ color: redColor }}>-{formatPercent(portfolioMetrics.maxDrawdown * 100)}</p>
-                  </div>
-                  <div className="px-2 py-1 rounded" style={{ background: inputBg }}>
-                    <p className="text-[7px] font-mono uppercase tracking-wider" style={{ color: textMuted }}>Vol</p>
-                    <p className="text-[11px] font-numeric" style={{ color: textSecondary }}>{formatPercent(portfolioMetrics.volatility * 100)}</p>
-                  </div>
-                  <div className="px-2 py-1 rounded" style={{ background: inputBg }}>
-                    <p className="text-[7px] font-mono uppercase tracking-wider" style={{ color: textMuted }}>Sharpe</p>
-                    <p className="text-[11px] font-numeric" style={{ color: portfolioMetrics.sharpe >= 0 ? greenColor : redColor }}>{portfolioMetrics.sharpe.toFixed(2)}</p>
-                  </div>
-                  <div className="px-2 py-1 rounded" style={{ background: inputBg }}>
-                    <p className="text-[7px] font-mono uppercase tracking-wider" style={{ color: textMuted }}>Ann. Ret</p>
-                    <p className="text-[11px] font-numeric" style={{ color: portfolioMetrics.annualizedReturn >= 0 ? greenColor : redColor }}>{formatPercent(portfolioMetrics.annualizedReturn * 100, { signed: true })}</p>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+      <ChartLegend
+        crosshairInfo={crosshairInfo}
+        chartMode={chartMode}
+        displayValue={displayValue}
+        displayChange={displayChange}
+        displayPct={displayPct}
+        holdingStats={holdingStats}
+        portfolioMetrics={portfolioMetrics}
+        positionsCount={filteredHoldings.length}
+        theme={theme}
+      />
 
       {/* ═══ TOOLBAR ═══ */}
-      <div className="px-4 pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        {/* Timeframes */}
-        <div className="flex gap-0.5 flex-wrap">
-          {timeframes.map((tf, i) => (
-            <button key={tf} onClick={() => setTimeframe(tf)} aria-pressed={timeframe === tf}
-              className="text-[10px] font-mono px-2 py-1 rounded transition-colors"
-              title={i < 7 ? `Key: ${i + 1}` : ''}
-              style={{ background: timeframe === tf ? `${gold}20` : 'transparent', color: timeframe === tf ? gold : textMuted }}>
-              {tf}
-            </button>
-          ))}
-        </div>
-
-        {/* Right tools */}
-        <div className="flex items-center gap-0.5 flex-wrap">
-          {/* Chart modes */}
-          {chartModes.map(({ mode, icon: Icon, tip }) => (
-            <button key={mode} onClick={() => setChartMode(mode)} title={tip} aria-label={tip} aria-pressed={chartMode === mode}
-              className="p-1.5 rounded transition-colors"
-              style={{ background: chartMode === mode ? `${gold}15` : 'transparent', color: chartMode === mode ? gold : textMuted }}>
-              <Icon size={13} aria-hidden="true" />
-            </button>
-          ))}
-
-          <div className="w-px h-4 mx-1" style={{ background: border }} />
-
-          {/* Indicators */}
-          {indicators.map((ind) => (
-            <button key={ind.key} onClick={() => toggleIndicator(ind.key)} aria-pressed={ind.active}
-              className="text-[9px] font-mono px-1.5 py-1 rounded transition-colors"
-              style={{ background: ind.active ? `${ind.color}15` : 'transparent', color: ind.active ? ind.color : textMuted }}>
-              {ind.label}
-            </button>
-          ))}
-
-          <div className="w-px h-4 mx-1" style={{ background: border }} />
-
-          {/* RSI */}
-          <button onClick={() => setShowRSI(!showRSI)} title="RSI (R)" aria-pressed={showRSI}
-            className="text-[9px] font-mono px-1.5 py-1 rounded transition-colors"
-            style={{ background: showRSI ? '#FFD60A15' : 'transparent', color: showRSI ? '#FFD60A' : textMuted }}>
-            RSI
-          </button>
-
-          {/* Log scale */}
-          <button onClick={() => setLogScale(!logScale)} title="Log scale (L)" aria-pressed={logScale}
-            className="text-[9px] font-mono px-1.5 py-1 rounded transition-colors"
-            style={{ background: logScale ? `${gold}15` : 'transparent', color: logScale ? gold : textMuted }}>
-            LOG
-          </button>
-
-          {/* View mode */}
-          {(['all', 'equities', 'crypto', 'etfs'] as ViewMode[]).map((v) => (
-            <button key={v} onClick={() => setViewMode(v)} aria-pressed={viewMode === v}
-              className="text-[9px] font-mono px-1.5 py-1 rounded transition-colors"
-              style={{ background: viewMode === v ? `${gold}15` : 'transparent', color: viewMode === v ? gold : textMuted }}>
-              {v === 'all' ? 'All' : v === 'equities' ? 'STK' : v === 'crypto' ? 'CRY' : 'ETF'}
-            </button>
-          ))}
-
-          <div className="w-px h-4 mx-1" style={{ background: border }} />
-
-          {/* Expand */}
-          <button onClick={() => setExpanded(!expanded)} title="Expand (F)" aria-label={expanded ? 'Collapse chart' : 'Expand chart'}
-            className="p-1.5 rounded transition-colors"
-            style={{ color: textMuted }}>
-            {expanded ? <Minimize2 size={12} aria-hidden="true" /> : <Maximize2 size={12} aria-hidden="true" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Custom date range */}
-      {timeframe === 'CUSTOM' && (
-        <div className="px-4 pb-2 flex items-center gap-2">
-          <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)}
-            aria-label="Custom range start date"
-            className="text-[10px] font-mono px-2 py-1 rounded-md outline-none"
-            style={{ background: inputBg, border: `0.5px solid ${inputBorder}`, color: textPrimary }} />
-          <span className="text-[10px] font-mono" style={{ color: textMuted }}>to</span>
-          <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)}
-            aria-label="Custom range end date"
-            className="text-[10px] font-mono px-2 py-1 rounded-md outline-none"
-            style={{ background: inputBg, border: `0.5px solid ${inputBorder}`, color: textPrimary }} />
-        </div>
-      )}
+      <ChartToolbar
+        timeframe={timeframe}
+        onTimeframeChange={setTimeframe}
+        chartMode={chartMode}
+        onChartModeChange={setChartMode}
+        indicators={indicators}
+        onToggleIndicator={toggleIndicator}
+        showRSI={showRSI}
+        onToggleRSI={() => setShowRSI(!showRSI)}
+        logScale={logScale}
+        onToggleLogScale={() => setLogScale(!logScale)}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        expanded={expanded}
+        onToggleExpanded={() => setExpanded(!expanded)}
+        customStart={customStart}
+        onCustomStartChange={setCustomStart}
+        customEnd={customEnd}
+        onCustomEndChange={setCustomEnd}
+        theme={theme}
+      />
 
       {/* ═══ MAIN CHART ═══ */}
       <div className="relative">
@@ -944,35 +617,17 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
       )}
 
       {/* ═══ BOTTOM LEGEND ═══ */}
-      <div className="px-4 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2" style={{ borderTop: `1px solid ${border}` }}>
-        <div className="flex gap-3 items-center flex-wrap">
-          <div className="flex items-center gap-1 text-[9px] font-mono" style={{ color: textMuted }}>
-            <span className="w-3 h-0.5 rounded-full" style={{ background: gold }} /> Portfolio
-          </div>
-          {showSMA && <div className="flex items-center gap-1 text-[9px] font-mono" style={{ color: '#5AC8FA' }}><span className="w-3 h-0.5 rounded-full" style={{ background: '#5AC8FA' }} /> SMA(20)</div>}
-          {showEMA && <div className="flex items-center gap-1 text-[9px] font-mono" style={{ color: '#AF52DE' }}><span className="w-3 h-0.5 rounded-full" style={{ background: '#AF52DE' }} /> EMA(50)</div>}
-          {showBB && <div className="flex items-center gap-1 text-[9px] font-mono" style={{ color: '#FF9500' }}><span className="w-3 h-0.5 rounded-full" style={{ background: '#FF950060' }} /> BB(20,2)</div>}
-          {showRSI && <div className="flex items-center gap-1 text-[9px] font-mono" style={{ color: '#FFD60A' }}><span className="w-3 h-0.5 rounded-full" style={{ background: '#FFD60A' }} /> RSI(14)</div>}
-        </div>
-        <div className="flex gap-1.5 flex-wrap items-center">
-          {savedViews.map((v, i) => (
-            <button key={i} onClick={() => { setTimeframe(v.timeframe); setViewMode(v.viewMode || 'all'); }}
-              className="text-[8px] font-mono px-2 py-0.5 rounded flex items-center gap-1"
-              style={{ background: inputBg, color: textMuted, border: `0.5px solid ${inputBorder}` }}>
-              {v.name}
-              <X size={7} role="button" aria-label={`Delete saved view ${v.name}`} onClick={(e) => { e.stopPropagation(); const u = savedViews.filter((_, j) => j !== i); setSavedViews(u); localStorage.setItem('ss_saved_views', JSON.stringify(u)); }} className="opacity-40 hover:opacity-100" />
-            </button>
-          ))}
-          <button onClick={saveCurrentView}
-            className="text-[8px] font-mono px-2 py-0.5 rounded"
-            style={{ background: inputBg, color: textMuted, border: `0.5px solid ${inputBorder}` }}>
-            <span style={{ color: gold }}>+</span> Save
-          </button>
-          <span className="text-[8px] font-mono" style={{ color: isDark ? '#2A2A2D' : '#D0D0D0' }}>
-            Keys: 1-7 timeframes | L log | R rsi | F expand
-          </span>
-        </div>
-      </div>
+      <ChartFooter
+        showSMA={showSMA}
+        showEMA={showEMA}
+        showBB={showBB}
+        showRSI={showRSI}
+        savedViews={savedViews}
+        onApplyView={(v) => { setTimeframe(v.timeframe); setViewMode(v.viewMode || 'all'); }}
+        onDeleteView={deleteView}
+        onSaveView={saveCurrentView}
+        theme={theme}
+      />
     </div>
   );
 }
