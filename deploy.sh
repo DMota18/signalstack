@@ -49,39 +49,40 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
-# Verify critical vars are set (not placeholder)
-for var in SUPABASE_URL SUPABASE_ANON_KEY ANTHROPIC_API_KEY ENCRYPTION_KEY SUPABASE_JWT_SECRET DOMAIN; do
+# Verify critical vars are set (not placeholder) — fail hard, don't
+# deploy quietly insecure
+MISSING=0
+for var in SUPABASE_URL SUPABASE_ANON_KEY ANTHROPIC_API_KEY ENCRYPTION_KEY SUPABASE_JWT_SECRET DOMAIN REDIS_PASSWORD; do
     val=$(grep "^${var}=" .env | cut -d'=' -f2-)
     if [ -z "$val" ] || [[ "$val" == *"your-"* ]] || [[ "$val" == *"changeme"* ]]; then
-        echo "WARNING: $var appears unset or still has placeholder value."
+        echo "ERROR: $var is unset or still has a placeholder value."
+        MISSING=1
     fi
 done
+if [ "$MISSING" -eq 1 ]; then
+    echo "Fix the values above in .env, then re-run."
+    exit 1
+fi
 
-# Update REDIS_URL to include password for Docker
+# Update REDIS_URL to include password for Docker (backup kept as .env.bak)
 REDIS_PW=$(grep "^REDIS_PASSWORD=" .env | cut -d'=' -f2-)
-if [ -n "$REDIS_PW" ] && [ "$REDIS_PW" != "changeme" ]; then
-    # Ensure REDIS_URL uses the password
-    if ! grep -q "@redis:" .env; then
-        sed -i "s|REDIS_URL=redis://redis:6379/0|REDIS_URL=redis://:${REDIS_PW}@redis:6379/0|" .env
-        echo "Updated REDIS_URL with password."
-    fi
+if ! grep -q "@redis:" .env; then
+    sed -i.bak "s|REDIS_URL=redis://redis:6379/0|REDIS_URL=redis://:${REDIS_PW}@redis:6379/0|" .env
+    echo "Updated REDIS_URL with password."
 fi
 
 echo ".env verified."
 
 # --- 5. Build frontend ---
 echo "[5/6] Building frontend..."
-if [ -d frontend/node_modules ]; then
-    echo "node_modules exists, skipping npm install."
-else
-    # Install Node.js if needed
-    if ! command -v node &> /dev/null; then
-        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-        sudo apt-get install -y nodejs
-    fi
-    cd frontend && npm ci && cd ..
+# Install Node.js if needed
+if ! command -v node &> /dev/null; then
+    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+    sudo apt-get install -y nodejs
 fi
-cd frontend && npm run build && cd ..
+# npm ci every deploy: skipping when node_modules existed meant a
+# package.json bump silently built against stale dependencies
+cd frontend && npm ci && npm run build && cd ..
 echo "Frontend built to frontend/dist/"
 
 # --- 6. Launch ---
