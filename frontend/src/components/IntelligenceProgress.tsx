@@ -102,7 +102,7 @@ export default function IntelligenceProgress({
   // Error state
   if (error) {
     return (
-      <div className="rounded-xl overflow-hidden"
+      <div className="rounded-xl overflow-hidden" role="alert"
         style={{ background: surface, border: `0.5px solid ${redColor}40` }}>
         <div className="h-1 w-full" style={{ background: redColor }} />
         <div className="p-5">
@@ -114,8 +114,8 @@ export default function IntelligenceProgress({
               </p>
             </div>
             {onDismiss && (
-              <button onClick={onDismiss} className="p-1 rounded hover:opacity-70">
-                <X size={14} style={{ color: textMuted }} />
+              <button onClick={onDismiss} aria-label="Dismiss error" className="p-1 rounded hover:opacity-70">
+                <X size={14} style={{ color: textMuted }} aria-hidden="true" />
               </button>
             )}
           </div>
@@ -160,8 +160,8 @@ export default function IntelligenceProgress({
       <div className="p-5">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Loader2 size={16} className="animate-spin" style={{ color: gold }} />
+          <div className="flex items-center gap-2" role="status" aria-live="polite">
+            <Loader2 size={16} className="animate-spin" style={{ color: gold }} aria-hidden="true" />
             <p className="text-sm font-body font-medium" style={{ color: gold }}>
               {statusMessage || 'Generating intelligence'}
             </p>

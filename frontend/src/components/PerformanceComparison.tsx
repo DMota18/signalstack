@@ -154,10 +154,10 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
           {tickers.map((t, i) => (
             <span key={t} className="text-[10px] font-body font-medium px-2 py-0.5 rounded-full flex items-center gap-1"
               style={{ background: `${LINE_COLORS[i % LINE_COLORS.length]}15`, color: LINE_COLORS[i % LINE_COLORS.length], border: `0.5px solid ${LINE_COLORS[i % LINE_COLORS.length]}30` }}>
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: LINE_COLORS[i % LINE_COLORS.length] }} />
+              <span className="w-1.5 h-1.5 rounded-full" aria-hidden="true" style={{ background: LINE_COLORS[i % LINE_COLORS.length] }} />
               {t}
               {t !== baseTicker && (
-                <X size={8} className="cursor-pointer opacity-60 hover:opacity-100" onClick={() => removeTicker(t)} />
+                <X size={8} role="button" aria-label={`Remove ${t} from comparison`} className="cursor-pointer opacity-60 hover:opacity-100" onClick={() => removeTicker(t)} />
               )}
             </span>
           ))}
@@ -171,11 +171,12 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
                 onKeyDown={(e) => e.key === 'Enter' && addTicker()}
                 placeholder="Add..."
                 maxLength={6}
+                aria-label="Ticker to add to comparison"
                 className="text-[10px] font-body px-2 py-0.5 rounded-md outline-none w-16"
                 style={{ background: isDark ? '#0C0C0E' : '#F8F7F4', border: `0.5px solid ${isDark ? '#2A2A2D' : '#D0D0D0'}`, color: isDark ? '#E8E6E1' : '#1A1A1D' }}
               />
-              <button onClick={addTicker} className="text-[10px]" style={{ color: gold }}>
-                <Plus size={12} />
+              <button onClick={addTicker} aria-label="Add ticker to comparison" className="text-[10px]" style={{ color: gold }}>
+                <Plus size={12} aria-hidden="true" />
               </button>
             </div>
           )}
@@ -184,7 +185,7 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
         {/* Timeframe */}
         <div className="flex gap-0.5">
           {tfOptions.map((tf) => (
-            <button key={tf} onClick={() => setTimeframe(tf)}
+            <button key={tf} onClick={() => setTimeframe(tf)} aria-pressed={timeframe === tf}
               className="text-[10px] font-body px-2 py-1 rounded transition-colors"
               style={{ background: timeframe === tf ? `${gold}20` : 'transparent', color: timeframe === tf ? gold : textMuted }}>
               {tf}
@@ -214,7 +215,7 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
             <Loader2 size={18} className="animate-spin" style={{ color: gold }} />
           </div>
         )}
-        <div ref={containerRef} style={{ minHeight: 280 }} />
+        <div ref={containerRef} role="img" aria-label="Performance comparison chart" style={{ minHeight: 280 }} />
       </div>
 
       <p className="text-[9px] font-body mt-2" style={{ color: isDark ? '#2A2A2D' : '#D0D0D0' }}>

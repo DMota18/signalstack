@@ -35,7 +35,7 @@ export default function UpgradeCTA({ feature, compact = false }: UpgradeCTAProps
           border: `0.5px solid ${gold}30`,
           color: gold,
         }}>
-        {loading ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
+        {loading ? <Loader2 size={12} className="animate-spin" aria-hidden="true" /> : <Zap size={12} aria-hidden="true" />}
         Upgrade to unlock
       </button>
     );
@@ -61,7 +61,7 @@ export default function UpgradeCTA({ feature, compact = false }: UpgradeCTAProps
         onClick={handleUpgrade}
         disabled={loading}
         className="btn-gold text-sm mx-auto flex items-center gap-2 disabled:opacity-50">
-        {loading ? <><Loader2 size={14} className="animate-spin" /> Redirecting...</> : 'Upgrade to Pro'}
+        {loading ? <><Loader2 size={14} className="animate-spin" aria-hidden="true" /> Redirecting...</> : 'Upgrade to Pro'}
       </button>
     </div>
   );

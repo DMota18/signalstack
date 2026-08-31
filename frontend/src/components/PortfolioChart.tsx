@@ -833,7 +833,7 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
         {/* Timeframes */}
         <div className="flex gap-0.5 flex-wrap">
           {timeframes.map((tf, i) => (
-            <button key={tf} onClick={() => setTimeframe(tf)}
+            <button key={tf} onClick={() => setTimeframe(tf)} aria-pressed={timeframe === tf}
               className="text-[10px] font-mono px-2 py-1 rounded transition-colors"
               title={i < 7 ? `Key: ${i + 1}` : ''}
               style={{ background: timeframe === tf ? `${gold}20` : 'transparent', color: timeframe === tf ? gold : textMuted }}>
@@ -846,10 +846,10 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
         <div className="flex items-center gap-0.5 flex-wrap">
           {/* Chart modes */}
           {chartModes.map(({ mode, icon: Icon, tip }) => (
-            <button key={mode} onClick={() => setChartMode(mode)} title={tip}
+            <button key={mode} onClick={() => setChartMode(mode)} title={tip} aria-label={tip} aria-pressed={chartMode === mode}
               className="p-1.5 rounded transition-colors"
               style={{ background: chartMode === mode ? `${gold}15` : 'transparent', color: chartMode === mode ? gold : textMuted }}>
-              <Icon size={13} />
+              <Icon size={13} aria-hidden="true" />
             </button>
           ))}
 
@@ -857,7 +857,7 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
 
           {/* Indicators */}
           {indicators.map((ind) => (
-            <button key={ind.key} onClick={() => toggleIndicator(ind.key)}
+            <button key={ind.key} onClick={() => toggleIndicator(ind.key)} aria-pressed={ind.active}
               className="text-[9px] font-mono px-1.5 py-1 rounded transition-colors"
               style={{ background: ind.active ? `${ind.color}15` : 'transparent', color: ind.active ? ind.color : textMuted }}>
               {ind.label}
@@ -867,14 +867,14 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
           <div className="w-px h-4 mx-1" style={{ background: border }} />
 
           {/* RSI */}
-          <button onClick={() => setShowRSI(!showRSI)} title="RSI (R)"
+          <button onClick={() => setShowRSI(!showRSI)} title="RSI (R)" aria-pressed={showRSI}
             className="text-[9px] font-mono px-1.5 py-1 rounded transition-colors"
             style={{ background: showRSI ? '#FFD60A15' : 'transparent', color: showRSI ? '#FFD60A' : textMuted }}>
             RSI
           </button>
 
           {/* Log scale */}
-          <button onClick={() => setLogScale(!logScale)} title="Log scale (L)"
+          <button onClick={() => setLogScale(!logScale)} title="Log scale (L)" aria-pressed={logScale}
             className="text-[9px] font-mono px-1.5 py-1 rounded transition-colors"
             style={{ background: logScale ? `${gold}15` : 'transparent', color: logScale ? gold : textMuted }}>
             LOG
@@ -882,7 +882,7 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
 
           {/* View mode */}
           {(['all', 'equities', 'crypto', 'etfs'] as ViewMode[]).map((v) => (
-            <button key={v} onClick={() => setViewMode(v)}
+            <button key={v} onClick={() => setViewMode(v)} aria-pressed={viewMode === v}
               className="text-[9px] font-mono px-1.5 py-1 rounded transition-colors"
               style={{ background: viewMode === v ? `${gold}15` : 'transparent', color: viewMode === v ? gold : textMuted }}>
               {v === 'all' ? 'All' : v === 'equities' ? 'STK' : v === 'crypto' ? 'CRY' : 'ETF'}
@@ -892,10 +892,10 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
           <div className="w-px h-4 mx-1" style={{ background: border }} />
 
           {/* Expand */}
-          <button onClick={() => setExpanded(!expanded)} title="Expand (F)"
+          <button onClick={() => setExpanded(!expanded)} title="Expand (F)" aria-label={expanded ? 'Collapse chart' : 'Expand chart'}
             className="p-1.5 rounded transition-colors"
             style={{ color: textMuted }}>
-            {expanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+            {expanded ? <Minimize2 size={12} aria-hidden="true" /> : <Maximize2 size={12} aria-hidden="true" />}
           </button>
         </div>
       </div>
@@ -904,10 +904,12 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
       {timeframe === 'CUSTOM' && (
         <div className="px-4 pb-2 flex items-center gap-2">
           <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)}
+            aria-label="Custom range start date"
             className="text-[10px] font-mono px-2 py-1 rounded-md outline-none"
             style={{ background: inputBg, border: `0.5px solid ${inputBorder}`, color: textPrimary }} />
           <span className="text-[10px] font-mono" style={{ color: textMuted }}>to</span>
           <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)}
+            aria-label="Custom range end date"
             className="text-[10px] font-mono px-2 py-1 rounded-md outline-none"
             style={{ background: inputBg, border: `0.5px solid ${inputBorder}`, color: textPrimary }} />
         </div>
@@ -920,7 +922,7 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
             <Loader2 size={20} className="animate-spin" style={{ color: gold }} />
           </div>
         )}
-        <div ref={mainContainerRef} style={{ minHeight: chartHeight }} />
+        <div ref={mainContainerRef} role="img" aria-label="Portfolio value chart" style={{ minHeight: chartHeight }} />
         {!lwcReady && !chartLoading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <p className="text-xs font-mono" style={{ color: textMuted }}>Loading chart engine...</p>
@@ -958,7 +960,7 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
               className="text-[8px] font-mono px-2 py-0.5 rounded flex items-center gap-1"
               style={{ background: inputBg, color: textMuted, border: `0.5px solid ${inputBorder}` }}>
               {v.name}
-              <X size={7} onClick={(e) => { e.stopPropagation(); const u = savedViews.filter((_, j) => j !== i); setSavedViews(u); localStorage.setItem('ss_saved_views', JSON.stringify(u)); }} className="opacity-40 hover:opacity-100" />
+              <X size={7} role="button" aria-label={`Delete saved view ${v.name}`} onClick={(e) => { e.stopPropagation(); const u = savedViews.filter((_, j) => j !== i); setSavedViews(u); localStorage.setItem('ss_saved_views', JSON.stringify(u)); }} className="opacity-40 hover:opacity-100" />
             </button>
           ))}
           <button onClick={saveCurrentView}

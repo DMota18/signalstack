@@ -234,7 +234,7 @@ export default function PortfolioTreemap({ holdings }: PortfolioTreemapProps) {
       <div className="flex items-center justify-between mb-3">
         <div className="flex gap-1">
           {colorModes.map((m) => (
-            <button key={m.value} onClick={() => setColorMode(m.value)}
+            <button key={m.value} onClick={() => setColorMode(m.value)} aria-pressed={colorMode === m.value}
               className="text-[10px] font-body px-2 py-0.5 rounded transition-colors"
               style={{
                 background: colorMode === m.value ? `${gold}15` : 'transparent',

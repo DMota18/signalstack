@@ -286,7 +286,7 @@ export default function PolymarketCard({ holdingTickers }: { holdingTickers: str
             className="flex items-center gap-1 text-[10px] font-body transition-opacity hover:opacity-70"
             style={{ color: gold }}
           >
-            View all <ChevronRight size={12} />
+            View all <ChevronRight size={12} aria-hidden="true" />
           </button>
         </div>
 

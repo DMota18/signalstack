@@ -157,13 +157,13 @@ export default function MarketsPage() {
       {/* Tab bar */}
       <div className="flex gap-1 flex-wrap">
         {tabs.map((t) => (
-          <button key={t.value} onClick={() => setTab(t.value)}
+          <button key={t.value} onClick={() => setTab(t.value)} aria-pressed={tab === t.value}
             className="flex items-center gap-1.5 text-[11px] font-body px-3 py-1.5 rounded-md transition-colors"
             style={{
               background: tab === t.value ? `${gold}15` : 'transparent',
               color: tab === t.value ? gold : textMuted,
             }}>
-            <t.icon size={12} /> {t.label}
+            <t.icon size={12} aria-hidden="true" /> {t.label}
           </button>
         ))}
       </div>
@@ -173,7 +173,7 @@ export default function MarketsPage() {
         <div className="space-y-3">
           <div className="flex gap-1">
             {(['holdings', 'general'] as const).map((m) => (
-              <button key={m} onClick={() => setNewsMode(m)}
+              <button key={m} onClick={() => setNewsMode(m)} aria-pressed={newsMode === m}
                 className="text-[10px] font-body px-2.5 py-1 rounded transition-colors"
                 style={{
                   background: newsMode === m ? `${gold}12` : 'transparent',
@@ -247,7 +247,7 @@ export default function MarketsPage() {
             <button onClick={handleRefreshEarnings} disabled={refreshing}
               className="flex items-center gap-1.5 text-[10px] font-body px-2.5 py-1 rounded transition-all disabled:opacity-40"
               style={{ color: textMuted, border: `0.5px solid ${isDark ? '#2A2A2D' : '#D0D0D0'}` }}>
-              <RefreshCw size={10} className={refreshing ? 'animate-spin' : ''} />
+              <RefreshCw size={10} className={refreshing ? 'animate-spin' : ''} aria-hidden="true" />
               Refresh
             </button>
           </div>

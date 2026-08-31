@@ -55,8 +55,9 @@ export default function SignUpPage() {
           )}
 
           <div>
-            <label className="block text-xs font-body mb-1.5" style={{ color: textMuted }}>Name</label>
+            <label htmlFor="signup-name" className="block text-xs font-body mb-1.5" style={{ color: textMuted }}>Name</label>
             <input
+              id="signup-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -67,8 +68,9 @@ export default function SignUpPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-body mb-1.5" style={{ color: textMuted }}>Email</label>
+            <label htmlFor="signup-email" className="block text-xs font-body mb-1.5" style={{ color: textMuted }}>Email</label>
             <input
+              id="signup-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -79,8 +81,9 @@ export default function SignUpPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-body mb-1.5" style={{ color: textMuted }}>Password</label>
+            <label htmlFor="signup-password" className="block text-xs font-body mb-1.5" style={{ color: textMuted }}>Password</label>
             <input
+              id="signup-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -108,7 +111,7 @@ export default function SignUpPage() {
           </label>
 
           <button type="submit" disabled={loading || !disclaimer} className="btn-gold w-full disabled:opacity-50 flex items-center justify-center gap-2">
-            {loading && <Loader2 size={14} className="animate-spin" />}
+            {loading && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
             {loading ? 'Creating account...' : 'Create free account'}
           </button>
         </form>

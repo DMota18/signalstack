@@ -45,7 +45,7 @@ export default function FairValueGauge({ ticker, currentPrice, financials, funda
       <button onClick={compute}
         className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-body transition-all hover:scale-[1.005]"
         style={{ background: `${gold}08`, border: `0.5px solid ${gold}20`, color: gold }}>
-        <Sparkles size={14} /> Estimate fair value
+        <Sparkles size={14} aria-hidden="true" /> Estimate fair value
       </button>
     );
   }

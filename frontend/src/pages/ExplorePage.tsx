@@ -263,10 +263,10 @@ export default function ExplorePage() {
           <div className="absolute inset-0 bg-black/60" onClick={() => setDeepDiveOpen(false)} />
           <div className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl p-6"
             style={{ background: isDark ? '#111113' : '#FFFFFF', border: `0.5px solid ${border}` }}>
-            <button onClick={() => setDeepDiveOpen(false)}
+            <button onClick={() => setDeepDiveOpen(false)} aria-label="Close deep dive"
               className="absolute top-4 right-4 p-1.5 rounded-lg hover:opacity-70"
               style={{ color: textMuted }}>
-              <X size={18} />
+              <X size={18} aria-hidden="true" />
             </button>
 
             <div className="flex items-center gap-2 mb-1">
@@ -371,7 +371,7 @@ export default function ExplorePage() {
         <button onClick={() => setActiveCategory(null)}
           className="flex items-center gap-1.5 text-xs font-body mb-3 transition-opacity hover:opacity-70"
           style={{ color: textMuted }}>
-          <ArrowLeft size={14} /> All categories
+          <ArrowLeft size={14} aria-hidden="true" /> All categories
         </button>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -391,9 +391,9 @@ export default function ExplorePage() {
             style={{ background: gold, color: '#0C0C0E' }}
           >
             {generating ? (
-              <><Loader2 size={12} className="animate-spin" /> Generating...</>
+              <><Loader2 size={12} className="animate-spin" aria-hidden="true" /> Generating...</>
             ) : (
-              <><Sparkles size={12} /> {ideas.length > 0 ? 'Regenerate' : 'Generate ideas'}</>
+              <><Sparkles size={12} aria-hidden="true" /> {ideas.length > 0 ? 'Regenerate' : 'Generate ideas'}</>
             )}
           </button>
         </div>
@@ -528,7 +528,7 @@ export default function ExplorePage() {
                   {/* Bottom row */}
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-body flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: riskColor }} />
+                      <span className="w-1.5 h-1.5 rounded-full" aria-hidden="true" style={{ background: riskColor }} />
                       <span style={{ color: textMuted }}>{idea.risk_level}</span>
                     </span>
                     <div className="flex items-center gap-2">
@@ -536,12 +536,12 @@ export default function ExplorePage() {
                         <button onClick={(e) => { e.stopPropagation(); openDeepDive(idea.ticker); }}
                           className="text-[10px] font-body flex items-center gap-1 px-2 py-0.5 rounded transition-colors hover:opacity-70"
                           style={{ background: isDark ? '#5856D610' : '#4845B508', color: isDark ? '#5856D6' : '#4845B5', border: `0.5px solid ${isDark ? '#5856D620' : '#4845B515'}` }}>
-                          <Sparkles size={9} /> Deep dive
+                          <Sparkles size={9} aria-hidden="true" /> Deep dive
                         </button>
                       )}
                       <button onClick={() => navigate(`/app/research/${idea.ticker}`)}
                         className="text-[10px] font-body flex items-center gap-1" style={{ color: gold }}>
-                        Research <ChevronRight size={10} />
+                        Research <ChevronRight size={10} aria-hidden="true" />
                       </button>
                     </div>
                   </div>

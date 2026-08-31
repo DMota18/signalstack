@@ -52,7 +52,7 @@ export default function AlertDetailPage() {
       <button onClick={() => navigate('/app/alerts')}
         className="flex items-center gap-2 text-sm font-body transition-opacity hover:opacity-70"
         style={{ color: textMuted }}>
-        <ArrowLeft size={16} /> Back to alerts
+        <ArrowLeft size={16} aria-hidden="true" /> Back to alerts
       </button>
 
       {/* Header */}
@@ -180,18 +180,18 @@ export default function AlertDetailPage() {
           <button onClick={() => handleFeedback('useful')}
             className="flex items-center gap-1.5 text-xs font-body px-4 py-2 rounded-lg transition-all hover:scale-105"
             style={{ background: `${isDark ? '#34C759' : '#28A745'}15`, border: `0.5px solid ${isDark ? '#34C759' : '#28A745'}40`, color: isDark ? '#34C759' : '#28A745' }}>
-            <ThumbsUp size={13} /> Useful
+            <ThumbsUp size={13} aria-hidden="true" /> Useful
           </button>
           <button onClick={() => handleFeedback('not_useful')}
             className="flex items-center gap-1.5 text-xs font-body px-4 py-2 rounded-lg transition-all hover:scale-105"
             style={{ background: `${isDark ? '#FF453A' : '#DC3545'}10`, border: `0.5px solid ${isDark ? '#FF453A' : '#DC3545'}30`, color: isDark ? '#FF453A' : '#DC3545' }}>
-            <ThumbsDown size={13} /> Not useful
+            <ThumbsDown size={13} aria-hidden="true" /> Not useful
           </button>
         </div>
       ) : (
         <div className="flex items-center justify-center gap-2 py-4 rounded-lg"
-          style={{ background: `${gold}08` }}>
-          <Check size={14} style={{ color: gold }} />
+          style={{ background: `${gold}08` }} role="status">
+          <Check size={14} style={{ color: gold }} aria-hidden="true" />
           <p className="text-xs font-body" style={{ color: gold }}>
             {feedbackGiven === 'useful' ? 'Glad this was helpful!' : 'Thanks — we\'ll improve future reports.'}
           </p>
@@ -218,11 +218,11 @@ export default function AlertDetailPage() {
           }}
         >
           {emailSending ? (
-            <><Loader2 size={13} className="animate-spin" /> Sending...</>
+            <><Loader2 size={13} className="animate-spin" aria-hidden="true" /> Sending...</>
           ) : emailSent ? (
-            <><Check size={13} /> Sent to your email</>
+            <><Check size={13} aria-hidden="true" /> Sent to your email</>
           ) : (
-            <><Mail size={13} /> Email this report</>
+            <><Mail size={13} aria-hidden="true" /> Email this report</>
           )}
         </button>
       </div>

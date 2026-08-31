@@ -70,8 +70,8 @@ export default function PublicResearchPage() {
           <div className="flex items-center gap-3">
             <PublicSearch isDark={isDark} gold={gold} textMuted={textMuted} surface={surface} border={border} />
 
-            <button onClick={toggleTheme} className="p-1.5 rounded-lg" style={{ color: textMuted }}>
-              {isDark ? <Sun size={16} /> : <Moon size={16} />}
+            <button onClick={toggleTheme} aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'} className="p-1.5 rounded-lg" style={{ color: textMuted }}>
+              {isDark ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
             </button>
 
             <Link
@@ -173,6 +173,7 @@ function PublicSearch({ isDark, gold, textMuted, surface, border }: {
             }
           }}
           placeholder="Search any ticker..."
+          aria-label="Search any ticker"
           className="bg-transparent outline-none w-32 font-body"
           style={{ color: isDark ? '#E8E6E1' : '#1A1A1D' }}
         />

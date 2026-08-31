@@ -51,8 +51,9 @@ export default function SignInPage() {
           )}
 
           <div>
-            <label className="block text-xs font-body mb-1.5" style={{ color: textMuted }}>Email</label>
+            <label htmlFor="signin-email" className="block text-xs font-body mb-1.5" style={{ color: textMuted }}>Email</label>
             <input
+              id="signin-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -67,8 +68,9 @@ export default function SignInPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-body mb-1.5" style={{ color: textMuted }}>Password</label>
+            <label htmlFor="signin-password" className="block text-xs font-body mb-1.5" style={{ color: textMuted }}>Password</label>
             <input
+              id="signin-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -87,7 +89,7 @@ export default function SignInPage() {
             disabled={loading}
             className="btn-gold w-full disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {loading && <Loader2 size={14} className="animate-spin" />}
+            {loading && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
             {loading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>

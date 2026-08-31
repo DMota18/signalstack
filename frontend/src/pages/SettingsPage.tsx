@@ -260,16 +260,16 @@ export default function SettingsPage() {
 
       {/* Profile */}
       <Section title="Profile" isDark={isDark} surface={surface} border={border}>
-        <Field label="Display name" isDark={isDark} textMuted={textMuted}>
-          <input type="text" value={profile.display_name || ''} onChange={(e) => setProfile({ ...profile, display_name: e.target.value })}
+        <Field label="Display name" htmlFor="settings-display-name" isDark={isDark} textMuted={textMuted}>
+          <input id="settings-display-name" type="text" value={profile.display_name || ''} onChange={(e) => setProfile({ ...profile, display_name: e.target.value })}
             className="w-full px-3 py-2 rounded-lg text-sm font-body outline-none"
             style={{ background: inputBg, border: `0.5px solid ${inputBorder}`, color: isDark ? '#E8E6E1' : '#1A1A1D' }} />
         </Field>
         <Field label="Email" isDark={isDark} textMuted={textMuted}>
           <p className="text-sm font-body" style={{ color: textMuted }}>{profile.email || user?.email}</p>
         </Field>
-        <Field label="Timezone" isDark={isDark} textMuted={textMuted}>
-          <select value={profile.timezone || 'America/New_York'} onChange={(e) => setProfile({ ...profile, timezone: e.target.value })}
+        <Field label="Timezone" htmlFor="settings-timezone" isDark={isDark} textMuted={textMuted}>
+          <select id="settings-timezone" value={profile.timezone || 'America/New_York'} onChange={(e) => setProfile({ ...profile, timezone: e.target.value })}
             className="w-full px-3 py-2 rounded-lg text-sm font-body outline-none"
             style={{ background: inputBg, border: `0.5px solid ${inputBorder}`, color: isDark ? '#E8E6E1' : '#1A1A1D' }}>
             <option value="America/New_York">Eastern (ET)</option>
@@ -317,8 +317,8 @@ export default function SettingsPage() {
                 className="flex items-center gap-1.5 text-xs font-body px-3 py-1.5 rounded-lg transition-colors"
                 style={{ border: `0.5px solid ${inputBorder}`, color: textMuted }}>
                 {billingLoading && billingAction === 'portal'
-                  ? <Loader2 size={12} className="animate-spin" />
-                  : <ExternalLink size={12} />}
+                  ? <Loader2 size={12} className="animate-spin" aria-hidden="true" />
+                  : <ExternalLink size={12} aria-hidden="true" />}
                 Manage
               </button>
             </div>
@@ -347,7 +347,7 @@ export default function SettingsPage() {
                   disabled={billingLoading}
                   className="btn-gold text-sm flex items-center gap-2 disabled:opacity-50">
                   {billingLoading && billingAction === 'checkout'
-                    ? <><Loader2 size={14} className="animate-spin" /> Redirecting...</>
+                    ? <><Loader2 size={14} className="animate-spin" aria-hidden="true" /> Redirecting...</>
                     : 'Upgrade'}
                 </button>
               </div>
@@ -385,7 +385,7 @@ export default function SettingsPage() {
                     border: `0.5px solid ${codeCopied ? `${greenColor}40` : inputBorder}`,
                     color: codeCopied ? greenColor : textMuted,
                   }}>
-                  {codeCopied ? <Check size={12} /> : <Copy size={12} />}
+                  {codeCopied ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}
                   {codeCopied ? 'Copied' : 'Copy'}
                 </button>
               </div>
@@ -436,7 +436,7 @@ export default function SettingsPage() {
         <Field label="Risk appetite" isDark={isDark} textMuted={textMuted}>
           <div className="flex gap-1.5">
             {['conservative', 'moderate', 'growth', 'aggressive'].map((r) => (
-              <button key={r} onClick={() => setInvestor({ ...investor, risk_appetite: r })}
+              <button key={r} onClick={() => setInvestor({ ...investor, risk_appetite: r })} aria-pressed={investor.risk_appetite === r}
                 className="text-xs font-body px-3 py-1.5 rounded-lg transition-colors flex-1"
                 style={{
                   background: investor.risk_appetite === r ? `${gold}15` : 'transparent',
@@ -453,7 +453,7 @@ export default function SettingsPage() {
             {sectorOptions.map((s) => {
               const active = (investor.sector_interests || []).includes(s.value);
               return (
-                <button key={s.value} onClick={() => toggleSector(s.value)}
+                <button key={s.value} onClick={() => toggleSector(s.value)} aria-pressed={active}
                   className="text-[11px] font-body px-3 py-1.5 rounded-full transition-colors"
                   style={{
                     background: active ? `${gold}15` : isDark ? '#1A1A1D' : '#F0EEE8',
@@ -474,7 +474,7 @@ export default function SettingsPage() {
               { value: 'momentum', label: 'Momentum' },
               { value: 'under_the_radar', label: 'Under the radar' },
             ].map((d) => (
-              <button key={d.value} onClick={() => setInvestor({ ...investor, discovery_mode: d.value })}
+              <button key={d.value} onClick={() => setInvestor({ ...investor, discovery_mode: d.value })} aria-pressed={investor.discovery_mode === d.value}
                 className="text-[11px] font-body px-3 py-1.5 rounded-lg transition-colors"
                 style={{
                   background: investor.discovery_mode === d.value ? `${gold}15` : 'transparent',
@@ -515,11 +515,11 @@ export default function SettingsPage() {
             }}
           >
             {pushLoading ? (
-              <Loader2 size={14} className="animate-spin" />
+              <Loader2 size={14} className="animate-spin" aria-hidden="true" />
             ) : pushEnabled ? (
-              <Bell size={14} />
+              <Bell size={14} aria-hidden="true" />
             ) : (
-              <BellOff size={14} />
+              <BellOff size={14} aria-hidden="true" />
             )}
             {pushEnabled ? 'Enabled' : 'Enable'}
           </button>
@@ -546,16 +546,16 @@ export default function SettingsPage() {
                 </p>
               </div>
             </div>
-            <button onClick={() => disconnect(c.id)}
+            <button onClick={() => disconnect(c.id)} aria-label={`Disconnect ${c.brokerage_name}`}
               className="flex items-center gap-1 text-xs font-body px-2 py-1 rounded"
               style={{ color: isDark ? '#FF453A' : '#DC3545' }}>
-              <Unlink size={12} /> Disconnect
+              <Unlink size={12} aria-hidden="true" /> Disconnect
             </button>
           </div>
         ))}
         <button onClick={connectBrokerage} disabled={connecting}
           className="btn-outline w-full mt-3 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
-          {connecting ? <><Loader2 size={14} className="animate-spin" /> Connecting to SnapTrade...</> : 'Connect a brokerage'}
+          {connecting ? <><Loader2 size={14} className="animate-spin" aria-hidden="true" /> Connecting to SnapTrade...</> : 'Connect a brokerage'}
         </button>
       </Section>
 
@@ -571,7 +571,7 @@ export default function SettingsPage() {
           <button onClick={toggleTheme}
             className="flex items-center gap-2 text-xs font-body px-3 py-1.5 rounded-lg"
             style={{ border: `0.5px solid ${inputBorder}`, color: textMuted }}>
-            {isDark ? <Sun size={14} /> : <Moon size={14} />}
+            {isDark ? <Sun size={14} aria-hidden="true" /> : <Moon size={14} aria-hidden="true" />}
             Switch to {isDark ? 'light' : 'dark'}
           </button>
         </div>
@@ -593,12 +593,12 @@ function Section({ title, children, isDark, surface, border }: {
   );
 }
 
-function Field({ label, children, isDark: _isDark, textMuted }: {
-  label: string; children: React.ReactNode; isDark: boolean; textMuted: string;
+function Field({ label, children, isDark: _isDark, textMuted, htmlFor }: {
+  label: string; children: React.ReactNode; isDark: boolean; textMuted: string; htmlFor?: string;
 }) {
   return (
     <div>
-      <label className="block text-[11px] font-body mb-1.5" style={{ color: textMuted }}>{label}</label>
+      <label htmlFor={htmlFor} className="block text-[11px] font-body mb-1.5" style={{ color: textMuted }}>{label}</label>
       {children}
     </div>
   );

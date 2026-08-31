@@ -50,7 +50,7 @@ export default function HoldingsTable({ holdings, onRemove: _onRemove }: { holdi
       {/* Toggle */}
       <div className="flex gap-1 mb-2">
         {modes.map((m) => (
-          <button key={m.value} onClick={() => setChangeMode(m.value)}
+          <button key={m.value} onClick={() => setChangeMode(m.value)} aria-pressed={changeMode === m.value}
             className="text-[10px] font-body px-2 py-0.5 rounded transition-colors"
             style={{
               background: changeMode === m.value ? `${gold}15` : 'transparent',

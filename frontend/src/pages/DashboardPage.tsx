@@ -256,7 +256,7 @@ export default function DashboardPage() {
               </p>
               <button onClick={() => navigate('/app/holdings')}
                 className="text-[10px] font-body hover:opacity-70" style={{ color: gold }}>
-                Manage <ChevronRight size={10} className="inline" />
+                Manage <ChevronRight size={10} className="inline" aria-hidden="true" />
               </button>
             </div>
             <HoldingsTable holdings={holdings} />
@@ -333,9 +333,9 @@ export default function DashboardPage() {
                 >
                   <span className="text-[10px] font-numeric" style={{ color: textMuted }}>{i + 1}</span>
                   <div className="flex items-center gap-1.5 min-w-0">
-                    {dayPct > 0 ? <TrendingUp size={10} style={{ color: changeColor(dayPct, isDark) }} /> :
-                     dayPct < 0 ? <TrendingDown size={10} style={{ color: changeColor(dayPct, isDark) }} /> :
-                     <Minus size={10} style={{ color: textMuted }} />}
+                    {dayPct > 0 ? <TrendingUp size={10} style={{ color: changeColor(dayPct, isDark) }} aria-hidden="true" /> :
+                     dayPct < 0 ? <TrendingDown size={10} style={{ color: changeColor(dayPct, isDark) }} aria-hidden="true" /> :
+                     <Minus size={10} style={{ color: textMuted }} aria-hidden="true" />}
                     <span className="text-[11px] font-body font-semibold truncate" style={{ color: textPrimary }}>
                       {h.ticker}
                     </span>

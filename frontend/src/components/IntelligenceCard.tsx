@@ -73,7 +73,7 @@ export default function IntelligenceCard() {
               </p>
             </div>
           </div>
-          <ChevronRight size={16} style={{ color: textMuted }} />
+          <ChevronRight size={16} style={{ color: textMuted }} aria-hidden="true" />
         </div>
 
         {/* Top insight */}
@@ -90,7 +90,7 @@ export default function IntelligenceCard() {
               style={{ background: isDark ? '#0C0C0E' : '#F8F7F4' }}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-body font-medium">{h.ticker}</span>
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: signalColor(h.net_signal) }} />
+                <span className="w-1.5 h-1.5 rounded-full" aria-hidden="true" style={{ background: signalColor(h.net_signal) }} />
               </div>
               <p className="text-[10px] font-body" style={{ color: signalColor(h.net_signal) }}>
                 {(h.net_signal || 'neutral').replace(/_/g, ' ')}

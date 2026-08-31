@@ -489,7 +489,7 @@ export default function PriceChart({
       <div className="flex items-center justify-between mb-2">
         <div className="flex gap-1">
           {TIMEFRAMES.map((tf) => (
-            <button key={tf} onClick={() => setTimeframe(tf)}
+            <button key={tf} onClick={() => setTimeframe(tf)} aria-pressed={timeframe === tf}
               className="text-[10px] font-body px-2.5 py-1 rounded-md transition-colors"
               style={{
                 background: timeframe === tf ? `${gold}15` : 'transparent',
@@ -504,6 +504,7 @@ export default function PriceChart({
           {/* SMA toggles */}
           <button
             onClick={() => setShowSMA20((v) => !v)}
+            aria-pressed={showSMA20}
             className="text-[9px] font-body px-2 py-0.5 rounded transition-colors"
             style={{
               background: showSMA20 ? `${sma20Color}20` : 'transparent',
@@ -515,6 +516,7 @@ export default function PriceChart({
           </button>
           <button
             onClick={() => setShowSMA50((v) => !v)}
+            aria-pressed={showSMA50}
             className="text-[9px] font-body px-2 py-0.5 rounded transition-colors"
             style={{
               background: showSMA50 ? `${sma50Color}20` : 'transparent',
@@ -534,6 +536,7 @@ export default function PriceChart({
               color: textMuted,
             }}
             title={activeChartType === 'area' ? 'Switch to candlestick' : 'Switch to area'}
+            aria-label={activeChartType === 'area' ? 'Switch to candlestick chart' : 'Switch to area chart'}
           >
             {activeChartType === 'candlestick' ? '\u{1F56F}\uFE0F' : '\uD83D\uDCC8'}
           </button>
@@ -584,7 +587,7 @@ export default function PriceChart({
           </div>
         )}
 
-        <div ref={chartContainerRef} style={{ minHeight: height }} />
+        <div ref={chartContainerRef} role="img" aria-label={`${ticker} price chart`} style={{ minHeight: height }} />
       </div>
     </div>
   );

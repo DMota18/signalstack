@@ -81,11 +81,11 @@ export default function SocialFeed({ ticker }: SocialFeedProps) {
         <div className="flex items-center justify-center gap-3 mt-3">
           <a href={stocktwitsUrl} target="_blank" rel="noopener noreferrer"
             className="text-[10px] font-body flex items-center gap-1" style={{ color: gold }}>
-            StockTwits <ExternalLink size={8} />
+            StockTwits <ExternalLink size={8} aria-hidden="true" />
           </a>
           <a href={xSearchUrl} target="_blank" rel="noopener noreferrer"
             className="text-[10px] font-body flex items-center gap-1" style={{ color: textMuted }}>
-            𝕏 Search <ExternalLink size={8} />
+            𝕏 Search <ExternalLink size={8} aria-hidden="true" />
           </a>
         </div>
       </div>
@@ -183,11 +183,11 @@ export default function SocialFeed({ ticker }: SocialFeedProps) {
         <div className="flex items-center gap-3">
           <a href={xSearchUrl} target="_blank" rel="noopener noreferrer"
             className="text-[9px] font-body flex items-center gap-1" style={{ color: textMuted }}>
-            𝕏 ${ticker} <ExternalLink size={7} />
+            𝕏 ${ticker} <ExternalLink size={7} aria-hidden="true" />
           </a>
           <a href={stocktwitsUrl} target="_blank" rel="noopener noreferrer"
             className="text-[9px] font-body flex items-center gap-1" style={{ color: gold }}>
-            View all on StockTwits <ExternalLink size={7} />
+            View all on StockTwits <ExternalLink size={7} aria-hidden="true" />
           </a>
         </div>
       </div>

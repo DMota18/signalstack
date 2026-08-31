@@ -138,7 +138,7 @@ export default function HoldingsPage() {
           <button onClick={() => setShowAddForm(!showAddForm)}
             className="flex items-center gap-1.5 text-xs font-body px-3 py-1.5 rounded-lg transition-all"
             style={{ background: showAddForm ? `${gold}15` : 'transparent', color: gold, border: `0.5px solid ${gold}40` }}>
-            {showAddForm ? <ChevronUp size={12} /> : <Plus size={12} />}
+            {showAddForm ? <ChevronUp size={12} aria-hidden="true" /> : <Plus size={12} aria-hidden="true" />}
             {showAddForm ? 'Close' : 'Add holding'}
           </button>
         )}
@@ -151,10 +151,10 @@ export default function HoldingsPage() {
           { value: 'watchlist' as const, label: `Watchlist (${watchlist.length})`, icon: Eye },
           { value: 'alerts' as const, label: `Price alerts (${priceAlerts.length})`, icon: BellPlus },
         ]).map((t) => (
-          <button key={t.value} onClick={() => setTab(t.value)}
+          <button key={t.value} onClick={() => setTab(t.value)} aria-pressed={tab === t.value}
             className="flex items-center gap-1.5 text-sm font-body px-4 py-2 rounded-lg transition-colors"
             style={{ background: tab === t.value ? `${gold}15` : 'transparent', color: tab === t.value ? gold : textMuted }}>
-            {t.icon && <t.icon size={13} />}
+            {t.icon && <t.icon size={13} aria-hidden="true" />}
             {t.label}
           </button>
         ))}
@@ -197,12 +197,12 @@ export default function HoldingsPage() {
         <div className="space-y-4">
           <div className="flex gap-2">
             <input type="text" value={newTicker} onChange={(e) => setNewTicker(e.target.value.toUpperCase())}
-              placeholder="Add ticker (e.g. TSLA)" maxLength={10}
+              placeholder="Add ticker (e.g. TSLA)" maxLength={10} aria-label="Ticker to add to watchlist"
               onKeyDown={(e) => e.key === 'Enter' && addToWatchlist()}
               className="px-3 py-2 rounded-lg text-sm font-body outline-none flex-1 max-w-xs"
               style={{ background: inputBg, border: `0.5px solid ${inputBorder}`, color: isDark ? '#E8E6E1' : '#1A1A1D' }} />
             <button onClick={addToWatchlist} className="btn-gold flex items-center gap-1 text-sm">
-              <Plus size={14} /> Add
+              <Plus size={14} aria-hidden="true" /> Add
             </button>
           </div>
 
@@ -210,7 +210,7 @@ export default function HoldingsPage() {
             <div key={w.ticker} className="flex items-center justify-between py-3"
               style={{ borderBottom: `0.5px solid ${isDark ? '#1A1A1D' : '#F0EEE8'}` }}>
               <span className="text-sm font-body font-medium">{w.ticker}</span>
-              <button onClick={() => removeFromWatchlist(w.ticker)}
+              <button onClick={() => removeFromWatchlist(w.ticker)} aria-label={`Remove ${w.ticker} from watchlist`}
                 className="text-xs font-body px-2 py-1 rounded" style={{ color: redColor }}>Remove</button>
             </div>
           ))}
@@ -232,10 +232,11 @@ export default function HoldingsPage() {
 
           <div className="flex items-center gap-2 flex-wrap">
             <input type="text" value={alertTicker} onChange={(e) => setAlertTicker(e.target.value.toUpperCase())}
-              placeholder="TICKER" maxLength={8}
+              placeholder="TICKER" maxLength={8} aria-label="Ticker for price alert"
               className="text-sm font-body px-3 py-2 rounded-lg outline-none w-24"
               style={{ background: inputBg, border: `0.5px solid ${inputBorder}`, color: isDark ? '#E8E6E1' : '#1A1A1D' }} />
             <select value={alertDirection} onChange={(e) => setAlertDirection(e.target.value as any)}
+              aria-label="Price alert direction"
               className="text-sm font-body px-3 py-2 rounded-lg outline-none"
               style={{ background: inputBg, border: `0.5px solid ${inputBorder}`, color: isDark ? '#E8E6E1' : '#1A1A1D' }}>
               <option value="above">moves up</option>
@@ -243,7 +244,7 @@ export default function HoldingsPage() {
             </select>
             <div className="flex items-center gap-1">
               <input type="number" value={alertThreshold} onChange={(e) => setAlertThreshold(e.target.value)}
-                min="0.5" max="50" step="0.5"
+                min="0.5" max="50" step="0.5" aria-label="Price alert threshold percent"
                 className="text-sm font-body px-2 py-2 rounded-lg outline-none w-16 text-center"
                 style={{ background: inputBg, border: `0.5px solid ${inputBorder}`, color: isDark ? '#E8E6E1' : '#1A1A1D' }} />
               <span className="text-sm font-body" style={{ color: textMuted }}>%</span>
@@ -251,7 +252,7 @@ export default function HoldingsPage() {
             <button onClick={createPriceAlert} disabled={!alertTicker.trim()}
               className="flex items-center gap-1.5 text-xs font-body px-4 py-2 rounded-lg disabled:opacity-40"
               style={{ background: gold, color: '#0C0C0E' }}>
-              <Plus size={12} /> Add alert
+              <Plus size={12} aria-hidden="true" /> Add alert
             </button>
           </div>
 
@@ -262,15 +263,15 @@ export default function HoldingsPage() {
                   style={{ background: isDark ? '#0C0C0E' : '#F8F7F4' }}>
                   <div className="flex items-center gap-3">
                     {a.direction === 'above'
-                      ? <TrendingUp size={13} style={{ color: greenColor }} />
-                      : <TrendingDown size={13} style={{ color: redColor }} />}
+                      ? <TrendingUp size={13} style={{ color: greenColor }} aria-hidden="true" />
+                      : <TrendingDown size={13} style={{ color: redColor }} aria-hidden="true" />}
                     <span className="text-sm font-body font-medium">{a.ticker}</span>
                     <span className="text-xs font-body" style={{ color: textMuted }}>
                       {a.direction === 'above' ? 'up' : 'down'} {a.threshold_pct}%
                     </span>
                   </div>
-                  <button onClick={() => deletePriceAlert(a.id)} className="p-1 rounded hover:opacity-70" style={{ color: textMuted }}>
-                    <Trash2 size={12} />
+                  <button onClick={() => deletePriceAlert(a.id)} aria-label={`Delete price alert for ${a.ticker}`} className="p-1 rounded hover:opacity-70" style={{ color: textMuted }}>
+                    <Trash2 size={12} aria-hidden="true" />
                   </button>
                 </div>
               ))}

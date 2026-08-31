@@ -320,7 +320,7 @@ export default function PortfolioDonut({ holdings }: PortfolioDonutProps) {
       {/* View toggle */}
       <div className="flex gap-1 mb-4">
         {views.map((v) => (
-          <button key={v.value} onClick={() => setView(v.value)}
+          <button key={v.value} onClick={() => setView(v.value)} aria-pressed={view === v.value}
             className="text-[10px] font-body px-2.5 py-1 rounded-md transition-colors"
             style={{
               background: view === v.value ? `${gold}15` : 'transparent',
@@ -380,7 +380,7 @@ export default function PortfolioDonut({ holdings }: PortfolioDonutProps) {
               className="flex items-center gap-2 text-left transition-opacity hover:opacity-70"
               style={{ cursor: isClickable(d) ? 'pointer' : 'default' }}
             >
-              <span className="w-2.5 h-2.5 rounded-sm shrink-0"
+              <span className="w-2.5 h-2.5 rounded-sm shrink-0" aria-hidden="true"
                 style={{ background: getColor(d, i) }} />
               <span className="text-[11px] font-body truncate">{d.label}</span>
               <span className="text-[10px] font-numeric ml-auto" style={{ color: textMuted }}>

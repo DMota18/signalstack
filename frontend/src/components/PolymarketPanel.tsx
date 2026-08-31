@@ -117,6 +117,7 @@ function TickerGroup({
       style={{ background: surface, border: `0.5px solid ${border}` }}>
       <button
         onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
         className="w-full flex items-center justify-between px-4 py-3 transition-colors"
         style={{ borderBottom: expanded ? `0.5px solid ${border}` : 'none' }}
       >
@@ -129,8 +130,8 @@ function TickerGroup({
             {events.length > 0 ? `${events.length} event${events.length !== 1 ? 's' : ''}` : `${match.markets_found} market${match.markets_found !== 1 ? 's' : ''}`}
           </span>
         </div>
-        {expanded ? <ChevronUp size={14} style={{ color: textMuted }} />
-          : <ChevronDown size={14} style={{ color: textMuted }} />}
+        {expanded ? <ChevronUp size={14} style={{ color: textMuted }} aria-hidden="true" />
+          : <ChevronDown size={14} style={{ color: textMuted }} aria-hidden="true" />}
       </button>
       {expanded && (
         <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -331,13 +332,14 @@ export default function PolymarketPanel() {
             background: isDark ? '#151517' : '#FFFFFF',
             border: `0.5px solid ${isDark ? '#2A2A2D' : '#D0D0D0'}`,
           }}>
-          <Search size={14} style={{ color: textMuted }} />
+          <Search size={14} style={{ color: textMuted }} aria-hidden="true" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search markets — e.g. 'Fed rate cut', 'Bitcoin 200k', 'recession'"
+            aria-label="Search prediction markets"
             className="flex-1 text-sm font-body outline-none bg-transparent"
             style={{ color: isDark ? '#E8E6E1' : '#1A1A1D' }}
           />

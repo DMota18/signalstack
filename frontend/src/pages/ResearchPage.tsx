@@ -69,13 +69,14 @@ function Section({ title, icon: Icon, children, isDark, gold, surface, border, d
     <div className="rounded-xl overflow-hidden" style={{ background: surface, border: `0.5px solid ${border}` }}>
       <button
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
         className="w-full flex items-center justify-between px-5 py-4"
       >
         <div className="flex items-center gap-2.5">
-          <Icon size={15} style={{ color: gold }} />
+          <Icon size={15} style={{ color: gold }} aria-hidden="true" />
           <span className="text-sm font-body font-medium">{title}</span>
         </div>
-        {open ? <ChevronUp size={15} style={{ color: textMuted }} /> : <ChevronDown size={15} style={{ color: textMuted }} />}
+        {open ? <ChevronUp size={15} style={{ color: textMuted }} aria-hidden="true" /> : <ChevronDown size={15} style={{ color: textMuted }} aria-hidden="true" />}
       </button>
       {open && (
         <div className="px-5 pb-5" style={{ borderTop: `0.5px solid ${border}` }}>
@@ -137,7 +138,7 @@ function FinancialTabs({ financials, isDark, gold, textMuted, border: _border }:
     <div>
       <div className="flex gap-1 mb-4">
         {tabs.map((t) => (
-          <button key={t.key} onClick={() => setTab(t.key)}
+          <button key={t.key} onClick={() => setTab(t.key)} aria-pressed={tab === t.key}
             className="text-[11px] font-body px-3 py-1.5 rounded-md transition-colors"
             style={{
               background: tab === t.key ? `${gold}15` : 'transparent',
@@ -318,12 +319,12 @@ export default function ResearchPage() {
         />
         {/* Chart type toggle */}
         <div className="flex justify-end mt-2 gap-2">
-          <button onClick={() => setChartType('area')}
+          <button onClick={() => setChartType('area')} aria-pressed={chartType === 'area'}
             className="text-[10px] font-body px-2 py-0.5 rounded transition-colors"
             style={{ background: chartType === 'area' ? `${gold}15` : 'transparent', color: chartType === 'area' ? gold : textMuted }}>
             Area
           </button>
-          <button onClick={() => setChartType('candlestick')}
+          <button onClick={() => setChartType('candlestick')} aria-pressed={chartType === 'candlestick'}
             className="text-[10px] font-body px-2 py-0.5 rounded transition-colors"
             style={{ background: chartType === 'candlestick' ? `${gold}15` : 'transparent', color: chartType === 'candlestick' ? gold : textMuted }}>
             Candles
@@ -1015,7 +1016,7 @@ function ShareButton({ ticker, price, dayChangePct, isDark, gold: _gold, textMut
         color: copied ? (isDark ? '#34C759' : '#28A745') : textMuted,
       }}
     >
-      {copied ? <Check size={12} /> : <Share2 size={12} />}
+      {copied ? <Check size={12} aria-hidden="true" /> : <Share2 size={12} aria-hidden="true" />}
       {copied ? 'Copied' : 'Share'}
     </button>
   );

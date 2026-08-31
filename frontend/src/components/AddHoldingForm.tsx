@@ -147,6 +147,7 @@ export default function AddHoldingForm({ onSuccess, compact = false }: AddHoldin
               onFocus={() => { if (searchResults.length > 0) setShowDropdown(true); }}
               placeholder="TICKER"
               maxLength={10}
+              aria-label="Ticker symbol"
               className="w-full px-3 py-2 rounded-lg text-sm font-body outline-none uppercase"
               style={inputStyle}
             />
@@ -172,6 +173,7 @@ export default function AddHoldingForm({ onSuccess, compact = false }: AddHoldin
             placeholder="Qty"
             min={0}
             step="any"
+            aria-label="Quantity"
             className="w-24 px-3 py-2 rounded-lg text-sm font-body outline-none"
             style={inputStyle}
           />
@@ -183,6 +185,7 @@ export default function AddHoldingForm({ onSuccess, compact = false }: AddHoldin
             placeholder="Price (opt)"
             min={0}
             step="any"
+            aria-label="Current price (optional)"
             className="flex-1 px-3 py-2 rounded-lg text-sm font-body outline-none"
             style={inputStyle}
           />
@@ -192,7 +195,7 @@ export default function AddHoldingForm({ onSuccess, compact = false }: AddHoldin
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-body font-medium transition-all disabled:opacity-40"
             style={{ background: gold, color: '#0C0C0E' }}
           >
-            {submitting ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+            {submitting ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Plus size={14} aria-hidden="true" />}
             Add
           </button>
         </div>
@@ -216,11 +219,12 @@ export default function AddHoldingForm({ onSuccess, compact = false }: AddHoldin
       {/* Row 1: Ticker + Quantity */}
       <div className="flex gap-3">
         <div className="flex-1 relative" ref={dropdownRef}>
-          <label className="block text-[11px] font-body mb-1" style={{ color: textMuted }}>
+          <label htmlFor="holding-ticker" className="block text-[11px] font-body mb-1" style={{ color: textMuted }}>
             Ticker or company name
           </label>
           <div className="relative">
             <input
+              id="holding-ticker"
               type="text"
               value={ticker}
               onChange={(e) => handleTickerChange(e.target.value)}
@@ -251,10 +255,11 @@ export default function AddHoldingForm({ onSuccess, compact = false }: AddHoldin
           )}
         </div>
         <div className="w-32">
-          <label className="block text-[11px] font-body mb-1" style={{ color: textMuted }}>
+          <label htmlFor="holding-quantity" className="block text-[11px] font-body mb-1" style={{ color: textMuted }}>
             Quantity
           </label>
           <input
+            id="holding-quantity"
             type="number"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
@@ -271,10 +276,11 @@ export default function AddHoldingForm({ onSuccess, compact = false }: AddHoldin
       {/* Row 2: Price + Cost basis */}
       <div className="flex gap-3">
         <div className="flex-1">
-          <label className="block text-[11px] font-body mb-1" style={{ color: textMuted }}>
+          <label htmlFor="holding-price" className="block text-[11px] font-body mb-1" style={{ color: textMuted }}>
             Current price <span style={{ color: isDark ? '#3A3A3D' : '#AAACB0' }}>(optional)</span>
           </label>
           <input
+            id="holding-price"
             type="number"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
@@ -286,10 +292,11 @@ export default function AddHoldingForm({ onSuccess, compact = false }: AddHoldin
           />
         </div>
         <div className="flex-1">
-          <label className="block text-[11px] font-body mb-1" style={{ color: textMuted }}>
+          <label htmlFor="holding-cost-basis" className="block text-[11px] font-body mb-1" style={{ color: textMuted }}>
             Avg cost basis <span style={{ color: isDark ? '#3A3A3D' : '#AAACB0' }}>(optional)</span>
           </label>
           <input
+            id="holding-cost-basis"
             type="number"
             value={costBasis}
             onChange={(e) => setCostBasis(e.target.value)}
@@ -314,10 +321,11 @@ export default function AddHoldingForm({ onSuccess, compact = false }: AddHoldin
       {showAdvanced && (
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="block text-[11px] font-body mb-1" style={{ color: textMuted }}>
+            <label htmlFor="holding-name" className="block text-[11px] font-body mb-1" style={{ color: textMuted }}>
               Security name
             </label>
             <input
+              id="holding-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -327,10 +335,11 @@ export default function AddHoldingForm({ onSuccess, compact = false }: AddHoldin
             />
           </div>
           <div className="w-40">
-            <label className="block text-[11px] font-body mb-1" style={{ color: textMuted }}>
+            <label htmlFor="holding-type" className="block text-[11px] font-body mb-1" style={{ color: textMuted }}>
               Type
             </label>
             <select
+              id="holding-type"
               value={type}
               onChange={(e) => setType(e.target.value)}
               className="w-full px-3 py-2.5 rounded-lg text-sm font-body outline-none"

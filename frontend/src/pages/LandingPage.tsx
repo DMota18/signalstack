@@ -18,8 +18,8 @@ export default function LandingPage() {
       <nav className="flex items-center justify-between px-6 lg:px-16 py-5" style={{ borderBottom: `0.5px solid ${border}` }}>
         <span className="font-display text-lg tracking-wide" style={{ color: gold }}>SignalStack</span>
         <div className="flex items-center gap-4">
-          <button onClick={toggleTheme} className="p-2 rounded-lg opacity-50 hover:opacity-100 transition-opacity">
-            {isDark ? <Sun size={16} /> : <Moon size={16} />}
+          <button onClick={toggleTheme} aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'} className="p-2 rounded-lg opacity-50 hover:opacity-100 transition-opacity">
+            {isDark ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
           </button>
           <Link to="/signin" className="text-sm font-body" style={{ color: textMuted }}>Sign in</Link>
           <Link to="/signup" className="btn-gold text-sm">Sign up free</Link>

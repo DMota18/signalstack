@@ -98,8 +98,8 @@ export default function AppShell() {
         {/* Left: Brand + date/time */}
         <div className="flex items-center gap-5">
           {/* Mobile hamburger */}
-          <button onClick={() => setMobileOpen(!mobileOpen)} className="lg:hidden">
-            {mobileOpen ? <X size={18} style={{ color: textPrimary }} /> : <Menu size={18} style={{ color: textPrimary }} />}
+          <button onClick={() => setMobileOpen(!mobileOpen)} aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'} className="lg:hidden">
+            {mobileOpen ? <X size={18} style={{ color: textPrimary }} aria-hidden="true" /> : <Menu size={18} style={{ color: textPrimary }} aria-hidden="true" />}
           </button>
 
           <div className="flex items-center gap-2.5">
@@ -117,17 +117,17 @@ export default function AppShell() {
 
         {/* Right: Actions + user */}
         <div className="flex items-center gap-3">
-          <button onClick={handleGenerate} disabled={generating}
+          <button onClick={handleGenerate} disabled={generating} aria-label={generating ? 'Analyzing' : 'Run Analysis'}
             className="flex items-center gap-1.5 text-[11px] font-body font-medium px-3 py-1.5 rounded-md transition-all disabled:opacity-30"
             style={{ background: gold, color: '#0C0C0E' }}>
-            {generating ? <Loader2 size={11} className="animate-spin" /> : <Zap size={11} />}
+            {generating ? <Loader2 size={11} className="animate-spin" aria-hidden="true" /> : <Zap size={11} aria-hidden="true" />}
             <span className="hidden sm:inline">{generating ? 'Analyzing' : 'Run Analysis'}</span>
           </button>
 
-          <button onClick={() => navigate('/app/settings')}
+          <button onClick={() => navigate('/app/settings')} aria-label="Settings"
             className="p-1.5 rounded-md transition-all hover:opacity-70"
             style={{ color: textMuted }}>
-            <Settings size={15} />
+            <Settings size={15} aria-hidden="true" />
           </button>
 
           <span className="text-[11px] font-body hidden sm:inline" style={{ color: textSecondary }}>
@@ -197,7 +197,7 @@ export default function AppShell() {
                     fontWeight: active ? 600 : 400,
                   }}
                 >
-                  <Icon size={14} />
+                  <Icon size={14} aria-hidden="true" />
                   {item.label}
                   {item.badge ? (
                     <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full"
@@ -269,7 +269,7 @@ export default function AppShell() {
               className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-left text-[12px] font-body transition-all hover:opacity-80"
               style={{ color: textSecondary }}
             >
-              {isDark ? <Sun size={14} /> : <Moon size={14} />}
+              {isDark ? <Sun size={14} aria-hidden="true" /> : <Moon size={14} aria-hidden="true" />}
               {isDark ? 'Light mode' : 'Dark mode'}
             </button>
             <button
@@ -277,7 +277,7 @@ export default function AppShell() {
               className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-left text-[12px] font-body transition-all hover:opacity-80"
               style={{ color: textSecondary }}
             >
-              <LogOut size={14} />
+              <LogOut size={14} aria-hidden="true" />
               Sign out
             </button>
           </div>
