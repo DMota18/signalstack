@@ -8,7 +8,8 @@ final synthesized intelligence via the produce_synthesis tool.
 
 Flow:
   1. Build context from UserContext
-  2. Run 5 signal agents in parallel (Profile runs after)
+  2. Run the six subagents sequentially with inter-agent delays
+     (free-tier rate limits make parallel dispatch counterproductive)
   3. Collect results, noting any failures
   4. Pass all results to Claude coordinator for synthesis
   5. Validate synthesis output against schema

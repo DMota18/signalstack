@@ -124,13 +124,10 @@ def run_user_digest(self, user_id: str, run_id: str | None = None):
 
     Pipeline (Domain 1.5 — fixed sequential):
       1. Build fresh UserContext (never resume stale session)
-      2. Run all 5 signal agents in parallel
-      3. Coordinator synthesizes
+      2. Run all six subagents sequentially (rate-limit friendly)
+      3. Coordinator synthesizes; compliance interception runs in the pipeline
       4. Format per delivery channel
-      5. Send (push + in-app, email for pro; all for premium)
-
-    This is a stub — the actual intelligence pipeline is built in Phase 1.
-    The structure is here so the scheduling infrastructure is complete.
+      5. Send (in-app always; push and email per user preferences)
     """
     run_async(_user_digest(self, user_id, run_id))
 
@@ -274,7 +271,7 @@ def run_user_weekly_report(self, user_id: str, run_id: str | None = None):
 
     Pipeline (same as daily digest with weekly framing):
       1. Build fresh UserContext (never resume stale session)
-      2. Run all 5 signal agents in parallel
+      2. Run all six subagents sequentially
       3. Coordinator synthesizes with weekly context
       4. Format per delivery channel (weekly email template)
       5. Send (push + in-app + email for pro/premium)
