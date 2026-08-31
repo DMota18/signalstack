@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
 import { LightweightCharts, loadLightweightCharts } from '../lib/charts';
+import { formatCurrency, formatPercent } from '../lib/format';
 import {
   X, Loader2, CandlestickChart, BarChart3, Activity, LineChart,
   Maximize2, Minimize2,
@@ -492,11 +493,11 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
       mainSeriesRef.current.setMarkers([
         ...(highIdx !== deduped.length - 1 ? [{
           time: deduped[highIdx].time, position: 'aboveBar' as const, shape: 'circle' as const,
-          color: greenColor, size: 0.5, text: `H $${fmtPrice(deduped[highIdx].value)}`,
+          color: greenColor, size: 0.5, text: `H ${formatCurrency(deduped[highIdx].value)}`,
         }] : []),
         ...(lowIdx !== 0 ? [{
           time: deduped[lowIdx].time, position: 'belowBar' as const, shape: 'circle' as const,
-          color: redColor, size: 0.5, text: `L $${fmtPrice(deduped[lowIdx].value)}`,
+          color: redColor, size: 0.5, text: `L ${formatCurrency(deduped[lowIdx].value)}`,
         }] : []),
       ].sort((a, b) => a.time < b.time ? -1 : 1));
     }
@@ -714,11 +715,11 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
           <div>
             <div className="flex items-center gap-3">
               <span className="font-numeric text-2xl font-medium" style={{ color: textPrimary }}>
-                ${fmtPrice(displayValue)}
+                {formatCurrency(displayValue)}
               </span>
               <span className="text-sm font-numeric" style={{ color: displayChange >= 0 ? greenColor : redColor }}>
                 {displayChange >= 0 ? '+' : ''}{fmtPrice(Math.abs(displayChange))}
-                {' '}({displayPct >= 0 ? '+' : ''}{displayPct.toFixed(2)}%)
+                {' '}({formatPercent(displayPct, { signed: true })})
               </span>
               {crosshairInfo?.time && (
                 <span className="text-[10px] font-mono" style={{ color: textMuted }}>{crosshairInfo.time}</span>
@@ -748,12 +749,12 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
               <div className="flex gap-3 mt-0.5 flex-wrap">
                 {crosshairInfo.periodReturn != null && (
                   <span className="text-[9px] font-mono" style={{ color: crosshairInfo.periodReturn >= 0 ? greenColor : redColor }}>
-                    Period {crosshairInfo.periodReturn >= 0 ? '+' : ''}{crosshairInfo.periodReturn.toFixed(2)}%
+                    Period {formatPercent(crosshairInfo.periodReturn, { signed: true })}
                   </span>
                 )}
                 {crosshairInfo.dailyChange != null && (
                   <span className="text-[9px] font-mono" style={{ color: crosshairInfo.dailyChange >= 0 ? greenColor : redColor }}>
-                    Chg {crosshairInfo.dailyChange >= 0 ? '+' : ''}{crosshairInfo.dailyChange.toFixed(2)}%
+                    Chg {formatPercent(crosshairInfo.dailyChange, { signed: true })}
                   </span>
                 )}
                 {crosshairInfo.volume != null && (
@@ -787,16 +788,16 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
               <div className="px-2 py-1 rounded" style={{ background: inputBg }}>
                 <p className="text-[7px] font-mono uppercase tracking-wider" style={{ color: textMuted }}>Day P&L</p>
                 <p className="text-[11px] font-numeric font-medium" style={{ color: holdingStats.totalDayChange >= 0 ? greenColor : redColor }}>
-                  {holdingStats.totalDayChange >= 0 ? '+' : '-'}${Math.abs(holdingStats.totalDayChange).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  {(holdingStats.totalDayChange >= 0 ? '+' : '-') + formatCurrency(Math.abs(holdingStats.totalDayChange), 0)}
                 </p>
               </div>
               <div className="px-2 py-1 rounded" style={{ background: inputBg }}>
                 <p className="text-[7px] font-mono uppercase tracking-wider" style={{ color: textMuted }}>High</p>
-                <p className="text-[11px] font-numeric" style={{ color: greenColor }}>${fmtPrice(holdingStats.high)}</p>
+                <p className="text-[11px] font-numeric" style={{ color: greenColor }}>{formatCurrency(holdingStats.high)}</p>
               </div>
               <div className="px-2 py-1 rounded" style={{ background: inputBg }}>
                 <p className="text-[7px] font-mono uppercase tracking-wider" style={{ color: textMuted }}>Low</p>
-                <p className="text-[11px] font-numeric" style={{ color: redColor }}>${fmtPrice(holdingStats.low)}</p>
+                <p className="text-[11px] font-numeric" style={{ color: redColor }}>{formatCurrency(holdingStats.low)}</p>
               </div>
               <div className="px-2 py-1 rounded" style={{ background: inputBg }}>
                 <p className="text-[7px] font-mono uppercase tracking-wider" style={{ color: textMuted }}>Positions</p>
@@ -806,11 +807,11 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
                 <>
                   <div className="px-2 py-1 rounded" style={{ background: inputBg }}>
                     <p className="text-[7px] font-mono uppercase tracking-wider" style={{ color: textMuted }}>Max DD</p>
-                    <p className="text-[11px] font-numeric" style={{ color: redColor }}>-{(portfolioMetrics.maxDrawdown * 100).toFixed(2)}%</p>
+                    <p className="text-[11px] font-numeric" style={{ color: redColor }}>-{formatPercent(portfolioMetrics.maxDrawdown * 100)}</p>
                   </div>
                   <div className="px-2 py-1 rounded" style={{ background: inputBg }}>
                     <p className="text-[7px] font-mono uppercase tracking-wider" style={{ color: textMuted }}>Vol</p>
-                    <p className="text-[11px] font-numeric" style={{ color: textSecondary }}>{(portfolioMetrics.volatility * 100).toFixed(2)}%</p>
+                    <p className="text-[11px] font-numeric" style={{ color: textSecondary }}>{formatPercent(portfolioMetrics.volatility * 100)}</p>
                   </div>
                   <div className="px-2 py-1 rounded" style={{ background: inputBg }}>
                     <p className="text-[7px] font-mono uppercase tracking-wider" style={{ color: textMuted }}>Sharpe</p>
@@ -818,7 +819,7 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
                   </div>
                   <div className="px-2 py-1 rounded" style={{ background: inputBg }}>
                     <p className="text-[7px] font-mono uppercase tracking-wider" style={{ color: textMuted }}>Ann. Ret</p>
-                    <p className="text-[11px] font-numeric" style={{ color: portfolioMetrics.annualizedReturn >= 0 ? greenColor : redColor }}>{portfolioMetrics.annualizedReturn >= 0 ? '+' : ''}{(portfolioMetrics.annualizedReturn * 100).toFixed(1)}%</p>
+                    <p className="text-[11px] font-numeric" style={{ color: portfolioMetrics.annualizedReturn >= 0 ? greenColor : redColor }}>{formatPercent(portfolioMetrics.annualizedReturn * 100, { signed: true })}</p>
                   </div>
                 </>
               )}

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Treemap, ResponsiveContainer, Tooltip } from 'recharts';
 import { useTheme } from '../hooks/useTheme';
 import { useNavigate } from 'react-router-dom';
+import { formatCurrency, formatCompactCurrency, formatPercent } from '../lib/format';
 
 interface PortfolioTreemapProps {
   holdings: any[];
@@ -46,11 +47,6 @@ function changeToColor(pct: number, isDark: boolean): string {
     return `hsl(145, ${Math.round(45 + 25 * i)}%, ${Math.round(45 + 15 * i)}%)`;
   }
   return 'hsl(0, 0%, 75%)';
-}
-
-function fmtPrice(v: number): string {
-  if (v >= 1000) return `$${(v / 1000).toFixed(1)}K`;
-  return `$${v.toFixed(0)}`;
 }
 
 // Custom cell renderer — professional Finviz-style
@@ -117,8 +113,8 @@ function TreemapCell(props: any) {
           fontFamily="Libre Baskerville, serif"
         >
           {colorMode === 'weight'
-            ? `${displayPct.toFixed(1)}%`
-            : `${displayPct >= 0 ? '+' : ''}${displayPct.toFixed(2)}%`}
+            ? formatPercent(displayPct)
+            : formatPercent(displayPct, { signed: true })}
         </text>
       )}
 
@@ -128,12 +124,12 @@ function TreemapCell(props: any) {
           <text x={rx + rw / 2} y={ry + rh * 0.68}
             textAnchor="middle" dominantBaseline="central"
             fill={subTextColor} fontSize={9} fontFamily="Libre Baskerville, serif">
-            ${(current_price || 0).toFixed(2)}
+            {formatCurrency(current_price || 0)}
           </text>
           <text x={rx + rw / 2} y={ry + rh * 0.82}
             textAnchor="middle" dominantBaseline="central"
             fill={subTextColor} fontSize={8} fontFamily="DM Sans, sans-serif" opacity={0.5}>
-            {fmtPrice(market_value || 0)}
+            {formatCompactCurrency(market_value || 0)}
           </text>
         </>
       )}
@@ -198,27 +194,27 @@ export default function PortfolioTreemap({ holdings }: PortfolioTreemapProps) {
         <div className="space-y-0.5">
           <div className="flex justify-between text-[10px] font-body" style={{ color: textMuted }}>
             <span>Price</span>
-            <span className="font-numeric">${d.current_price.toFixed(2)}</span>
+            <span className="font-numeric">{formatCurrency(d.current_price)}</span>
           </div>
           <div className="flex justify-between text-[10px] font-body" style={{ color: textMuted }}>
             <span>Value</span>
-            <span className="font-numeric">${d.market_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+            <span className="font-numeric">{formatCurrency(d.market_value, 0)}</span>
           </div>
           <div className="flex justify-between text-[10px] font-body" style={{ color: textMuted }}>
             <span>Weight</span>
-            <span className="font-numeric">{(totalValue > 0 ? (d.market_value / totalValue) * 100 : 0).toFixed(1)}%</span>
+            <span className="font-numeric">{formatPercent(totalValue > 0 ? (d.market_value / totalValue) * 100 : 0)}</span>
           </div>
           <div className="h-px my-1" style={{ background: isDark ? '#2A2A2D' : '#E8E6E1' }} />
           <div className="flex justify-between text-[10px] font-body">
             <span style={{ color: textMuted }}>Day</span>
             <span className="font-numeric font-medium" style={{ color: dayPct >= 0 ? greenC : redC }}>
-              {dayPct >= 0 ? '+' : ''}{dayPct.toFixed(2)}%
+              {formatPercent(dayPct, { signed: true })}
             </span>
           </div>
           <div className="flex justify-between text-[10px] font-body">
             <span style={{ color: textMuted }}>Total</span>
             <span className="font-numeric font-medium" style={{ color: totalPct >= 0 ? greenC : redC }}>
-              {totalPct >= 0 ? '+' : ''}{totalPct.toFixed(2)}%
+              {formatPercent(totalPct, { signed: true })}
             </span>
           </div>
         </div>

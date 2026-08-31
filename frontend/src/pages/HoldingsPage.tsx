@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
+import type { Holding, PriceAlert, WatchlistItem } from '../api/types';
 import HoldingsTable from '../components/HoldingsTable';
 import PortfolioDonut from '../components/PortfolioDonut';
 import AddHoldingForm from '../components/AddHoldingForm';
@@ -8,15 +10,13 @@ import {
   Plus, Loader2, ChevronUp, Eye, TrendingUp, TrendingDown,
   Trash2, BellPlus,
 } from 'lucide-react';
+import { formatCurrency } from '../lib/format';
 
 export default function HoldingsPage() {
   const { isDark } = useTheme();
-  const [holdings, setHoldings] = useState<any[]>([]);
-  const [watchlist, setWatchlist] = useState<any[]>([]);
-  const [priceAlerts, setPriceAlerts] = useState<any[]>([]);
+  const queryClient = useQueryClient();
   const [newTicker, setNewTicker] = useState('');
   const [tab, setTab] = useState<'holdings' | 'watchlist' | 'alerts'>('holdings');
-  const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
 
   // Price alert form
@@ -33,56 +33,84 @@ export default function HoldingsPage() {
   const greenColor = isDark ? '#34C759' : '#28A745';
   const redColor = isDark ? '#FF453A' : '#DC3545';
 
-  useEffect(() => { loadData(); }, []);
+  // ── Server state (React Query) ────────────────────────────────────────────
 
-  const loadData = async () => {
-    setLoading(true);
-    const [hRes, wRes, paRes] = await Promise.all([
-      api.getAllHoldings(),
-      api.getWatchlist(),
-      api.getPriceAlerts(),
-    ]);
-    if (hRes.status === 'ok') setHoldings(hRes.data || []);
-    if (wRes.status === 'ok') setWatchlist(wRes.data || []);
-    if (paRes.status === 'ok') setPriceAlerts(paRes.data || []);
-    setLoading(false);
-  };
+  const holdingsQuery = useQuery({
+    queryKey: ['holdings'],
+    queryFn: async (): Promise<Holding[]> => {
+      const res = await api.getAllHoldings();
+      if (res.status !== 'ok') throw new Error(res.error?.message || 'Failed to load holdings');
+      return res.data ?? [];
+    },
+  });
 
-  const addToWatchlist = async () => {
+  const watchlistQuery = useQuery({
+    queryKey: ['watchlist'],
+    queryFn: async (): Promise<WatchlistItem[]> => {
+      const res = await api.getWatchlist();
+      return res.status === 'ok' ? res.data ?? [] : [];
+    },
+  });
+
+  const priceAlertsQuery = useQuery({
+    queryKey: ['priceAlerts'],
+    queryFn: async (): Promise<PriceAlert[]> => {
+      const res = await api.getPriceAlerts();
+      return res.status === 'ok' ? res.data ?? [] : [];
+    },
+  });
+
+  const holdings = holdingsQuery.data ?? [];
+  const watchlist = watchlistQuery.data ?? [];
+  const priceAlerts = priceAlertsQuery.data ?? [];
+
+  const refreshHoldings = () => queryClient.invalidateQueries({ queryKey: ['holdings'] });
+
+  const addWatchlistMutation = useMutation({
+    mutationFn: (ticker: string) => api.addToWatchlist(ticker),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['watchlist'] }),
+  });
+
+  const removeWatchlistMutation = useMutation({
+    mutationFn: (ticker: string) => api.removeFromWatchlist(ticker),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['watchlist'] }),
+  });
+
+  const createAlertMutation = useMutation({
+    mutationFn: (input: { ticker: string; threshold: number; direction: 'above' | 'below' }) =>
+      api.createPriceAlert(input.ticker, input.threshold, input.direction),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['priceAlerts'] }),
+  });
+
+  const deleteAlertMutation = useMutation({
+    mutationFn: (id: string) => api.deletePriceAlert(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['priceAlerts'] }),
+  });
+
+  const addToWatchlist = () => {
     if (!newTicker.trim()) return;
-    await api.addToWatchlist(newTicker.trim().toUpperCase());
+    addWatchlistMutation.mutate(newTicker.trim().toUpperCase());
     setNewTicker('');
-    const wRes = await api.getWatchlist();
-    if (wRes.status === 'ok') setWatchlist(wRes.data || []);
   };
 
-  const removeFromWatchlist = async (ticker: string) => {
-    await api.removeFromWatchlist(ticker);
-    const wRes = await api.getWatchlist();
-    if (wRes.status === 'ok') setWatchlist(wRes.data || []);
-  };
+  const removeFromWatchlist = (ticker: string) => removeWatchlistMutation.mutate(ticker);
 
   const removeHolding = async (ticker: string) => {
     if (!confirm(`Remove ${ticker} from your portfolio?`)) return;
     await api.removeManualHolding(ticker);
-    await loadData();
+    refreshHoldings();
   };
 
-  const createPriceAlert = async () => {
+  const createPriceAlert = () => {
     const t = alertTicker.trim().toUpperCase();
     if (!t) return;
-    await api.createPriceAlert(t, Number(alertThreshold) || 3, alertDirection);
+    createAlertMutation.mutate({ ticker: t, threshold: Number(alertThreshold) || 3, direction: alertDirection });
     setAlertTicker('');
-    const r = await api.getPriceAlerts();
-    if (r.status === 'ok') setPriceAlerts(r.data || []);
   };
 
-  const deletePriceAlert = async (id: string) => {
-    await api.deletePriceAlert(id);
-    setPriceAlerts(priceAlerts.filter(a => a.id !== id));
-  };
+  const deletePriceAlert = (id: string) => deleteAlertMutation.mutate(id);
 
-  if (loading) {
+  if (holdingsQuery.isLoading) {
     return (
       <div className="space-y-6">
         <h1 className="font-display text-xl">Holdings</h1>
@@ -102,7 +130,7 @@ export default function HoldingsPage() {
           <h1 className="font-display text-xl">Holdings</h1>
           {totalValue > 0 && (
             <p className="text-sm font-numeric mt-0.5" style={{ color: textMuted }}>
-              ${totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })} across {holdings.length} position{holdings.length !== 1 ? 's' : ''}
+              {formatCurrency(totalValue, 0)} across {holdings.length} position{holdings.length !== 1 ? 's' : ''}
             </p>
           )}
         </div>
@@ -138,7 +166,7 @@ export default function HoldingsPage() {
           {showAddForm && (
             <div className="rounded-xl p-5" style={{ background: surface, border: isDark ? 'none' : `0.5px solid ${border}` }}>
               <p className="text-xs font-body font-medium mb-3" style={{ color: gold }}>Add a holding</p>
-              <AddHoldingForm onSuccess={loadData} />
+              <AddHoldingForm onSuccess={refreshHoldings} />
             </div>
           )}
 

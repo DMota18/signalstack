@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 
 import { getLogoUrl } from '../lib/brandColors';
+import { formatCurrency, formatCompactCurrency, formatPercent, formatNumber } from '../lib/format';
 
 type MarketTab = 'news' | 'earnings' | 'polymarket' | 'economy' | 'congress' | 'alerts';
 
@@ -27,10 +28,9 @@ function fmtIndicator(val: any, units: string): string {
   if (val == null) return '—';
   const n = Number(val);
   if (isNaN(n)) return String(val);
-  if (units.toLowerCase().includes('percent') || units.toLowerCase().includes('rate')) return `${n.toFixed(2)}%`;
-  if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-  if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
-  return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  if (units.toLowerCase().includes('percent') || units.toLowerCase().includes('rate')) return formatPercent(n);
+  if (Math.abs(n) >= 1e9) return formatCompactCurrency(n);
+  return formatNumber(n);
 }
 
 const MARKET_TABS: MarketTab[] = ['news', 'earnings', 'polymarket', 'economy', 'congress', 'alerts'];
@@ -91,8 +91,9 @@ export default function MarketsPage() {
       if (newsMode === 'general' && !marketNews) {
         // Try NewsAPI first (better sources), fall back to Finnhub
         const r = await api.getNewsApiHeadlines(25);
-        if (r.status === 'ok' && r.data?.articles?.length > 0) {
-          setMarketNews(r.data.articles);
+        const headlines = r.data?.articles ?? [];
+        if (r.status === 'ok' && headlines.length > 0) {
+          setMarketNews(headlines);
         } else {
           const fallback = await api.getMarketNews(25);
           if (fallback.status === 'ok') setMarketNews(fallback.data?.articles || []);
@@ -298,7 +299,7 @@ export default function MarketsPage() {
                         <div className="flex items-center gap-4">
                           {e.consensus_eps != null && (
                             <span className="text-[10px] font-numeric" style={{ color: textMuted }}>
-                              EPS est ${e.consensus_eps.toFixed(2)}
+                              EPS est {formatCurrency(e.consensus_eps)}
                             </span>
                           )}
                           <span className="text-sm font-display" style={{ color: e.days_until <= 5 ? gold : textMuted }}>

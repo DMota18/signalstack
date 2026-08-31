@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
 import { ArrowLeft, ThumbsUp, ThumbsDown, Check, Mail, Loader2 } from 'lucide-react';
+import { formatPercent } from '../lib/format';
 
 export default function AlertDetailPage() {
   const { alertId } = useParams();
@@ -114,7 +115,7 @@ export default function AlertDetailPage() {
                 <span className="font-display text-base">{h.ticker}</span>
                 {h.position_pct && (
                   <span className="text-[11px] font-body" style={{ color: textMuted }}>
-                    {h.position_pct.toFixed(1)}% of portfolio
+                    {formatPercent(h.position_pct)} of portfolio
                   </span>
                 )}
               </div>

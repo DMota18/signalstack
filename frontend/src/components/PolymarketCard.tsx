@@ -3,6 +3,7 @@ import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
 import { TrendingUp, BarChart3, Clock, ChevronRight, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { formatCurrency, formatCompactCurrency } from '../lib/format';
 
 interface PolymarketMarket {
   question: string;
@@ -54,12 +55,6 @@ import ProbabilityGauge from './ProbabilityGauge';
 
 function ProbabilityBar({ pct, gold: _gold, isDark: _isDark }: { pct: number; gold: string; isDark: boolean }) {
   return <ProbabilityGauge pct={pct} size={52} strokeWidth={4} />;
-}
-
-function formatVol(vol: number): string {
-  if (vol >= 1_000_000) return `$${(vol / 1_000_000).toFixed(1)}M`;
-  if (vol >= 1_000) return `$${(vol / 1_000).toFixed(0)}K`;
-  return `$${vol.toFixed(0)}`;
 }
 
 function formatEndDate(dateStr: string): string {
@@ -118,22 +113,22 @@ function MarketRow({
       <div className="flex items-center gap-3 pl-0.5 flex-wrap">
         {market.yes_price != null && (
           <span className="text-[9px] font-numeric" style={{ color: greenColor }}>
-            Yes ${market.yes_price.toFixed(2)}
+            Yes {formatCurrency(market.yes_price)}
           </span>
         )}
         {market.no_price != null && (
           <span className="text-[9px] font-numeric" style={{ color: redColor }}>
-            No ${market.no_price.toFixed(2)}
+            No {formatCurrency(market.no_price)}
           </span>
         )}
         {market.volume_24h > 0 && (
           <span className="text-[9px] font-body" style={{ color: textMuted }}>
-            Vol {formatVol(market.volume_24h)}
+            Vol {formatCompactCurrency(market.volume_24h)}
           </span>
         )}
         {market.liquidity > 0 && (
           <span className="text-[9px] font-body" style={{ color: textMuted }}>
-            Liq {formatVol(market.liquidity)}
+            Liq {formatCompactCurrency(market.liquidity)}
           </span>
         )}
         {endLabel && (

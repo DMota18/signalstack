@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { getLogoUrl, getBrandColor } from '../lib/brandColors';
+import { formatCurrency, formatPercent, formatNumber } from '../lib/format';
 
 type ChangeMode = 'unrealized' | 'day' | 'weight';
 
@@ -123,7 +124,7 @@ export default function HoldingsTable({ holdings, onRemove: _onRemove }: { holdi
             {/* Col 2: Price */}
             <div className="text-right">
               <span className="text-sm font-numeric font-semibold tabular-nums tracking-tight">
-                ${(h.current_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {formatCurrency(h.current_price || 0)}
               </span>
             </div>
 
@@ -136,11 +137,11 @@ export default function HoldingsTable({ holdings, onRemove: _onRemove }: { holdi
               )}
               <div>
                 <span className="text-xs font-numeric font-semibold tabular-nums block leading-tight" style={{ color: changeColor }}>
-                  {isWeight ? `${pct.toFixed(1)}%` : `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}
+                  {isWeight ? formatPercent(pct) : formatPercent(pct, { signed: true })}
                 </span>
                 {!isWeight && val !== 0 && (
                   <span className="text-[10px] font-numeric tabular-nums block leading-tight" style={{ color: changeColor, opacity: 0.65 }}>
-                    {val >= 0 ? '+' : '-'}${Math.abs(val).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    {(val >= 0 ? '+' : '-') + formatCurrency(Math.abs(val), 0)}
                   </span>
                 )}
               </div>
@@ -149,14 +150,14 @@ export default function HoldingsTable({ holdings, onRemove: _onRemove }: { holdi
             {/* Col 4: Market Value */}
             <div className="text-right">
               <span className="text-xs font-numeric font-medium tabular-nums" style={{ color: textMuted }}>
-                ${marketValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                {formatCurrency(marketValue, 0)}
               </span>
             </div>
 
             {/* Col 5: Shares — hidden on mobile */}
             <div className="text-right hidden lg:block">
               <span className="text-xs font-numeric tabular-nums" style={{ color: textMuted }}>
-                {(h.quantity || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                {formatNumber(h.quantity || 0, 4)}
               </span>
             </div>
 

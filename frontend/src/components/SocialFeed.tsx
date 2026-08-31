@@ -50,8 +50,9 @@ export default function SocialFeed({ ticker }: SocialFeedProps) {
     setMessages([]);
     api.getStockTwits(ticker, 20).then((res) => {
       if (res.status === 'ok' && res.data) {
-        setMessages(res.data.messages || []);
-        setSymbolInfo(res.data.symbol || null);
+        const data = res.data as { messages?: STMessage[]; symbol?: unknown };
+        setMessages(data.messages || []);
+        setSymbolInfo(data.symbol || null);
       }
       setLoading(false);
     });

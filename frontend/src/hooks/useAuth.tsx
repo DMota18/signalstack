@@ -4,7 +4,7 @@ import { api } from '../api/client';
 interface User {
   id: string;
   email: string;
-  display_name?: string;
+  display_name?: string | null;
   tier: string;
 }
 

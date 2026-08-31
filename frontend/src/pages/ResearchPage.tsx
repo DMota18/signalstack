@@ -14,26 +14,23 @@ import SocialFeed from '../components/SocialFeed';
 import SignalRadar from '../components/SignalRadar';
 import FairValueGauge from '../components/FairValueGauge';
 import PerformanceComparison from '../components/PerformanceComparison';
+import { formatCurrency, formatCompactCurrency, formatPercent, formatNumber, formatCompactNumber } from '../lib/format';
 
-// ─── Formatting helpers ──────────────────────────────────────────────────
+// ─── Formatting helpers (null-safe wrappers around lib/format) ───────────
 
 function fmtPrice(val: number | null | undefined): string {
   if (val == null || val === 0) return '—';
-  return `$${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return formatCurrency(val);
 }
 
 function fmtLargeNum(val: number | null | undefined): string {
   if (val == null) return '—';
-  if (Math.abs(val) >= 1e12) return `$${(val / 1e12).toFixed(2)}T`;
-  if (Math.abs(val) >= 1e9) return `$${(val / 1e9).toFixed(2)}B`;
-  if (Math.abs(val) >= 1e6) return `$${(val / 1e6).toFixed(1)}M`;
-  if (Math.abs(val) >= 1e3) return `$${(val / 1e3).toFixed(1)}K`;
-  return `$${val.toFixed(2)}`;
+  return formatCompactCurrency(val);
 }
 
 function fmtPct(val: number | null | undefined): string {
   if (val == null) return '—';
-  return `${(val * 100).toFixed(2)}%`;
+  return formatPercent(val * 100);
 }
 
 function fmtRatio(val: number | null | undefined): string {
@@ -43,9 +40,7 @@ function fmtRatio(val: number | null | undefined): string {
 
 function fmtVol(val: number | null | undefined): string {
   if (val == null) return '—';
-  if (val >= 1e6) return `${(val / 1e6).toFixed(2)}M`;
-  if (val >= 1e3) return `${(val / 1e3).toFixed(0)}K`;
-  return val.toLocaleString();
+  return formatCompactNumber(val);
 }
 
 function timeAgo(dateStr: string): string {
@@ -129,12 +124,7 @@ function FinancialTabs({ financials, isDark, gold, textMuted, border: _border }:
 
   const formatFinVal = (val: number | null | undefined): string => {
     if (val == null) return '—';
-    const abs = Math.abs(val);
-    const sign = val < 0 ? '-' : '';
-    if (abs >= 1e9) return `${sign}$${(abs / 1e9).toFixed(1)}B`;
-    if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(0)}M`;
-    if (abs >= 1e3) return `${sign}$${(abs / 1e3).toFixed(0)}K`;
-    return `${sign}$${abs.toFixed(0)}`;
+    return formatCompactCurrency(val);
   };
 
   const formatLabel = (key: string): string => {
@@ -195,7 +185,7 @@ function FinancialTabs({ financials, isDark, gold, textMuted, border: _border }:
                       {si < statements.length - 1 && yoyPct !== null && (
                         <div className="text-[9px] font-numeric flex items-center justify-end gap-0.5"
                           style={{ color: yoyPct >= 0 ? (isDark ? '#34C759' : '#28A745') : (isDark ? '#FF453A' : '#DC3545') }}>
-                          {yoyPct >= 0 ? '▲' : '▼'} {Math.abs(yoyPct).toFixed(1)}%
+                          {yoyPct >= 0 ? '▲' : '▼'} {formatPercent(Math.abs(yoyPct))}
                         </div>
                       )}
                     </td>
@@ -311,7 +301,7 @@ export default function ResearchPage() {
         <div className="flex items-baseline gap-3 mt-1">
           <span className="font-numeric text-2xl">{fmtPrice(price)}</span>
           <span className="font-numeric text-sm" style={{ color: isUp ? greenColor : redColor }}>
-            {isUp ? '+' : ''}{dayChange.toFixed(2)} ({isUp ? '+' : ''}{dayChangePct.toFixed(2)}%)
+            {isUp ? '+' : ''}{dayChange.toFixed(2)} ({formatPercent(dayChangePct, { signed: true })})
           </span>
           {isUp ? <TrendingUp size={16} style={{ color: greenColor }} /> : <TrendingDown size={16} style={{ color: redColor }} />}
         </div>
@@ -350,7 +340,7 @@ export default function ResearchPage() {
             <StatRow label="EBITDA" value={fmtLargeNum(fund.ebitda)} isDark={isDark} />
             <StatRow label="P/E ratio" value={fund.trailing_pe != null ? `${fund.trailing_pe.toFixed(2)}x` : '—'} isDark={isDark} />
             <StatRow label="Forward P/E" value={fund.forward_pe != null ? `${fund.forward_pe.toFixed(2)}x` : '—'} isDark={isDark} />
-            <StatRow label="EPS (TTM)" value={fund.trailing_eps != null ? `$${fund.trailing_eps.toFixed(2)}` : '—'} isDark={isDark} />
+            <StatRow label="EPS (TTM)" value={fund.trailing_eps != null ? formatCurrency(fund.trailing_eps) : '—'} isDark={isDark} />
             <StatRow label="Debt / equity" value={fund.debt_to_equity != null ? `${(fund.debt_to_equity / 100).toFixed(2)}x` : '—'} isDark={isDark} />
             <StatRow label="Current ratio" value={fmtRatio(fund.current_ratio)} isDark={isDark} />
             <StatRow label="Profit margin" value={fmtPct(fund.profit_margin)} isDark={isDark} />
@@ -363,7 +353,7 @@ export default function ResearchPage() {
             <StatRow label="Today's range" value={`${fmtPrice(quote.day_low)} – ${fmtPrice(quote.day_high)}`} isDark={isDark} />
             <StatRow label="52 week range" value={`${fmtPrice(fund.fifty_two_week_low)} – ${fmtPrice(fund.fifty_two_week_high)}`} isDark={isDark} />
             <StatRow label="Beta" value={fund.beta != null ? `${fund.beta.toFixed(2)}` : '—'} isDark={isDark} />
-            <StatRow label="Dividend yield" value={fund.dividend_yield != null ? `${(fund.dividend_yield * 100).toFixed(2)}%` : '—'} isDark={isDark} />
+            <StatRow label="Dividend yield" value={fund.dividend_yield != null ? formatPercent(fund.dividend_yield * 100) : '—'} isDark={isDark} />
             <StatRow label="50-day avg" value={fmtPrice(fund.fifty_day_avg)} isDark={isDark} />
             <StatRow label="200-day avg" value={fmtPrice(fund.two_hundred_day_avg)} isDark={isDark} />
             <StatRow label="Revenue growth" value={fmtPct(fund.revenue_growth)} isDark={isDark} />
@@ -438,15 +428,15 @@ export default function ResearchPage() {
                 <div className="mt-3 space-y-1.5">
                   <div className="flex justify-between text-xs font-body">
                     <span style={{ color: textMuted }}>Upper</span>
-                    <span className="font-numeric">${technicals.bollinger_bands.upper.toFixed(2)}</span>
+                    <span className="font-numeric">{formatCurrency(technicals.bollinger_bands.upper)}</span>
                   </div>
                   <div className="flex justify-between text-xs font-body">
                     <span style={{ color: gold }}>Middle</span>
-                    <span className="font-numeric font-medium" style={{ color: gold }}>${technicals.bollinger_bands.middle.toFixed(2)}</span>
+                    <span className="font-numeric font-medium" style={{ color: gold }}>{formatCurrency(technicals.bollinger_bands.middle)}</span>
                   </div>
                   <div className="flex justify-between text-xs font-body">
                     <span style={{ color: textMuted }}>Lower</span>
-                    <span className="font-numeric">${technicals.bollinger_bands.lower.toFixed(2)}</span>
+                    <span className="font-numeric">{formatCurrency(technicals.bollinger_bands.lower)}</span>
                   </div>
                 </div>
                 {price > 0 && (
@@ -511,7 +501,7 @@ export default function ResearchPage() {
         const renderMarketCard = (item: any, i: number) => {
           const title = item.question || item.event_title || '';
           const vol = item.total_volume || item.volume_24h || 0;
-          const volStr = vol >= 1_000_000 ? `$${(vol / 1_000_000).toFixed(1)}M` : vol >= 1000 ? `$${(vol / 1000).toFixed(0)}K` : `$${vol}`;
+          const volStr = formatCompactCurrency(vol);
           const endDate = item.end_date ? new Date(item.end_date) : null;
           const daysLeft = endDate ? Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / 86400000)) : null;
           const pct = item.yes_price != null ? Math.round(item.yes_price * 100) : null;
@@ -625,7 +615,7 @@ export default function ResearchPage() {
             )}
             {profile.employees && (
               <span className="text-[10px] font-body" style={{ color: textMuted }}>
-                {profile.employees.toLocaleString()} employees
+                {formatNumber(profile.employees)} employees
               </span>
             )}
             {profile.website && (
@@ -671,8 +661,7 @@ export default function ResearchPage() {
                     <p className="text-xs font-numeric" style={{
                       color: analyst.target_mean_price > price ? greenColor : redColor,
                     }}>
-                      {analyst.target_mean_price > price ? '+' : ''}
-                      {(((analyst.target_mean_price - price) / price) * 100).toFixed(1)}% from current
+                      {formatPercent(((analyst.target_mean_price - price) / price) * 100, { signed: true })} from current
                     </p>
                   )}
                   {(analyst.target_low_price || analyst.target_high_price) && (
@@ -736,15 +725,15 @@ export default function ResearchPage() {
                     <tr key={i} style={{ borderTop: `0.5px solid ${isDark ? '#1A1A1D' : '#F0EEE8'}` }}>
                       <td className="py-2.5 text-xs font-body">{e.date}</td>
                       <td className="py-2.5 text-xs font-numeric text-right">
-                        {e.eps_estimate != null ? `$${e.eps_estimate.toFixed(2)}` : '—'}
+                        {e.eps_estimate != null ? formatCurrency(e.eps_estimate) : '—'}
                       </td>
                       <td className="py-2.5 text-xs font-numeric text-right">
-                        {e.reported_eps != null ? `$${e.reported_eps.toFixed(2)}` : '—'}
+                        {e.reported_eps != null ? formatCurrency(e.reported_eps) : '—'}
                       </td>
                       <td className="py-2.5 text-xs font-numeric text-right" style={{
                         color: surprise == null ? textMuted : surprise >= 0 ? greenColor : redColor,
                       }}>
-                        {surprise != null ? `${surprise >= 0 ? '+' : ''}${surprise.toFixed(1)}%` : '—'}
+                        {surprise != null ? formatPercent(surprise, { signed: true }) : '—'}
                       </td>
                     </tr>
                   );
@@ -830,7 +819,7 @@ export default function ResearchPage() {
                   <p className="text-xs font-numeric" style={{
                     color: trade.transaction_code === 'P' ? greenColor : trade.transaction_code === 'S' ? redColor : textMuted,
                   }}>
-                    {trade.shares?.toLocaleString()} shares
+                    {trade.shares != null ? formatNumber(trade.shares) : ''} shares
                   </p>
                   <p className="text-[10px] font-body" style={{ color: textMuted }}>
                     {trade.transaction_date || trade.filing_date}
@@ -855,7 +844,7 @@ export default function ResearchPage() {
                 }} />
               <YAxis axisLine={false} tickLine={false}
                 tick={{ fontSize: 10, fill: textMuted }}
-                tickFormatter={(v: number) => `$${v.toFixed(2)}`}
+                tickFormatter={(v: number) => formatCurrency(v)}
                 width={50} />
               <ReTooltip
                 contentStyle={{
@@ -863,7 +852,7 @@ export default function ResearchPage() {
                   border: `0.5px solid ${border}`,
                   borderRadius: 8, fontSize: 12,
                 }}
-                formatter={(val: number, name: string) => [`$${val.toFixed(2)}`, name === 'eps_estimate' ? 'Estimate' : 'Actual']}
+                formatter={(val: number, name: string) => [formatCurrency(val), name === 'eps_estimate' ? 'Estimate' : 'Actual']}
               />
               <ReferenceLine y={0} stroke={isDark ? '#2A2A2D' : '#D0D0D0'} />
               <Bar dataKey="eps_estimate" fill={isDark ? '#2A2A2D' : '#D0D0D0'} radius={[3, 3, 0, 0]} barSize={16} name="eps_estimate" />
@@ -933,13 +922,13 @@ export default function ResearchPage() {
                   <tr key={i} style={{ borderTop: `0.5px solid ${isDark ? '#1A1A1D' : '#F0EEE8'}` }}>
                     <td className="py-2.5 text-xs font-body">{h.holder}</td>
                     <td className="py-2.5 text-xs font-numeric text-right">
-                      {h.shares ? h.shares.toLocaleString() : '—'}
+                      {h.shares ? formatNumber(h.shares) : '—'}
                     </td>
                     <td className="py-2.5 text-xs font-numeric text-right">
                       {h.value ? fmtLargeNum(h.value) : '—'}
                     </td>
                     <td className="py-2.5 text-xs font-numeric text-right">
-                      {h.pct_held != null ? `${(h.pct_held * 100).toFixed(2)}%` : '—'}
+                      {h.pct_held != null ? formatPercent(h.pct_held * 100) : '—'}
                     </td>
                   </tr>
                 ))}
@@ -989,7 +978,7 @@ function ShareButton({ ticker, price, dayChangePct, isDark, gold: _gold, textMut
 
   const shareUrl = `${window.location.origin}/research/${ticker}`;
 
-  const shareText = `${ticker} Signal Analysis — ${price > 0 ? `$${price.toFixed(2)}` : ''}${dayChangePct ? ` (${dayChangePct >= 0 ? '+' : ''}${dayChangePct.toFixed(2)}%)` : ''} — Polymarket odds, insider activity, institutional flow\n${shareUrl}`;
+  const shareText = `${ticker} Signal Analysis — ${price > 0 ? formatCurrency(price) : ''}${dayChangePct ? ` (${formatPercent(dayChangePct, { signed: true })})` : ''} — Polymarket odds, insider activity, institutional flow\n${shareUrl}`;
 
   const handleShare = async () => {
     // Try native share first (mobile)

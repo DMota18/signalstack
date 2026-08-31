@@ -179,14 +179,8 @@ export default function SettingsPage() {
     setInvestor({ ...investor, sector_interests: updated });
   };
 
-  // Register service worker on mount
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {
-        // Service worker registration failed — push won't work
-      });
-    }
-  }, []);
+  // The service worker is registered on app load (main.tsx); push
+  // subscription below uses navigator.serviceWorker.ready.
 
   const togglePushNotifications = async () => {
     if (!('Notification' in window) || !('serviceWorker' in navigator)) {

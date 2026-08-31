@@ -8,6 +8,7 @@ import {
   ChevronRight, Lock, Search, RefreshCw, GitBranch, DollarSign,
   Cpu, RotateCcw, ArrowLeft, X, Crown,
 } from 'lucide-react';
+import { formatCurrency, formatCompactCurrency, formatPercent } from '../lib/format';
 
 const ICON_MAP: Record<string, any> = {
   'sparkles': Sparkles, 'git-branch': GitBranch, 'rotate-ccw': RotateCcw,
@@ -26,43 +27,11 @@ const typeIcons: Record<string, any> = {
   'Momentum': TrendingUp, 'Under the radar': Search, 'Income': DollarSign,
 };
 
-interface Category {
-  key: string;
-  label: string;
-  description: string;
-  icon: string;
-  tier: string;
-  locked: boolean;
-}
-
-interface Idea {
-  ticker: string;
-  name: string;
-  reason: string;
-  type: string;
-  risk_level: string;
-  sector?: string;
-  catalyst?: string;
-  data_points?: {
-    pe_ratio?: number | string | null;
-    market_cap?: string | null;
-    revenue_growth?: string | null;
-    dividend_yield?: string | null;
-    correlation_to_portfolio?: number | null;
-  };
-}
-
-interface DeepDive {
-  ticker: string;
-  bull_case: string;
-  bear_case: string;
-  key_catalysts: string[];
-  key_risks: string[];
-  valuation_context: string;
-  portfolio_fit: string;
-  conviction_level: string;
-  time_horizon: string;
-}
+import type {
+  ExploreCategory as Category,
+  ExploreDeepDive as DeepDive,
+  ExploreIdea as Idea,
+} from '../api/types';
 
 export default function ExplorePage() {
   const { user } = useAuth();
@@ -116,10 +85,11 @@ export default function ExplorePage() {
     // Load cached ideas for this category
     const res = await api.getExploreIdeas(key);
     if (res.status === 'ok' && res.data) {
-      setIdeas(res.data.ideas || []);
+      const ideas = res.data.ideas || [];
+      setIdeas(ideas);
       setCategoryInsight(res.data.category_insight || '');
-      setGeneratedAt(res.data.generated_at);
-      if (res.data.ideas?.length > 0) fetchPrices(res.data.ideas);
+      setGeneratedAt(res.data.generated_at ?? null);
+      if (ideas.length > 0) fetchPrices(ideas);
     }
   };
 
@@ -130,7 +100,7 @@ export default function ExplorePage() {
     if (res.status === 'ok' && res.data) {
       setIdeas(res.data.ideas || []);
       setCategoryInsight(res.data.category_insight || '');
-      setGeneratedAt(res.data.generated_at);
+      setGeneratedAt(res.data.generated_at ?? null);
       fetchPrices(res.data.ideas || []);
     } else if (res.error?.code === 'tier_required') {
       // Show tier gate message — handled in UI
@@ -497,16 +467,14 @@ export default function ExplorePage() {
                     <div className="flex items-center gap-3 mb-3 py-2 px-3 rounded-lg"
                       style={{ background: isDark ? '#0C0C0E' : '#F8F7F4' }}>
                       <span className="text-sm font-numeric font-medium">
-                        ${priceData.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {formatCurrency(priceData.price)}
                       </span>
                       <span className="text-xs font-numeric" style={{ color: isUp ? greenColor : redColor }}>
-                        {isUp ? '+' : ''}{priceData.change_pct.toFixed(2)}%
+                        {formatPercent(priceData.change_pct, { signed: true })}
                       </span>
                       {priceData.market_cap && (
                         <span className="text-[10px] font-body ml-auto" style={{ color: textMuted }}>
-                          {priceData.market_cap >= 1e12 ? `$${(priceData.market_cap / 1e12).toFixed(1)}T`
-                            : priceData.market_cap >= 1e9 ? `$${(priceData.market_cap / 1e9).toFixed(1)}B`
-                            : `$${(priceData.market_cap / 1e6).toFixed(0)}M`}
+                          {formatCompactCurrency(priceData.market_cap)}
                         </span>
                       )}
                     </div>

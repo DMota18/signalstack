@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '../hooks/useTheme';
+import { formatPercent } from '../lib/format';
 
 interface MarketIndex {
   symbol: string;
@@ -58,6 +59,8 @@ export default function MarketTicker() {
     );
   }
 
+  // Bare index level (points, not dollars) — needs grouping with a fixed
+  // two-decimal minimum, which the shared plain-number helper does not expose.
   const fmtPrice = (p: number) => {
     return p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
@@ -83,7 +86,7 @@ export default function MarketTicker() {
                 {fmtPrice(idx.price)}
               </span>
               <span className="text-[11px] font-numeric font-medium tabular-nums" style={{ color }}>
-                {arrow} {isUp ? '+' : ''}{idx.changePct.toFixed(2)}%
+                {arrow} {formatPercent(idx.changePct, { signed: true })}
               </span>
             </div>
           );

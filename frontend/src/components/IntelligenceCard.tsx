@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
 import { Zap, ChevronRight, Clock } from 'lucide-react';
+import { formatPercent } from '../lib/format';
 
 export default function IntelligenceCard() {
   const { isDark } = useTheme();
@@ -17,7 +18,7 @@ export default function IntelligenceCard() {
 
   useEffect(() => {
     api.getLatestIntelligence().then((res) => {
-      if (res.status === 'ok' && res.data && res.data.id) {
+      if (res.status === 'ok' && res.data && 'id' in res.data) {
         setLatest(res.data);
       }
       setLoading(false);
@@ -96,7 +97,7 @@ export default function IntelligenceCard() {
               </p>
               {h.position_pct && (
                 <p className="text-[9px] font-body" style={{ color: textMuted }}>
-                  {h.position_pct.toFixed(1)}%
+                  {formatPercent(h.position_pct)}
                 </p>
               )}
             </div>

@@ -5,6 +5,7 @@ import {
   TrendingUp, Clock, Search, Loader2,
   ChevronDown, ChevronUp, Globe, AlertCircle,
 } from 'lucide-react';
+import { formatCompactCurrency } from '../lib/format';
 
 interface PolymarketMarket {
   question: string;
@@ -49,7 +50,7 @@ function FullMarketRow({
 }) {
   const yesPct = market.yes_price ? Math.round(market.yes_price * 100) : null;
   const vol = market.volume_24h || 0;
-  const volStr = vol >= 1_000_000 ? `$${(vol / 1_000_000).toFixed(1)}M` : vol >= 1000 ? `$${(vol / 1000).toFixed(0)}K` : `$${vol}`;
+  const volStr = formatCompactCurrency(vol);
   const endDate = market.end_date ? new Date(market.end_date) : null;
   const timeframe = endDate ? (endDate.getTime() - Date.now() < 7 * 86400000 ? 'Daily' : endDate.getTime() - Date.now() < 35 * 86400000 ? 'Monthly' : 'Long-term') : '';
   const greenColor = isDark ? '#34C759' : '#28A745';
@@ -136,7 +137,7 @@ function TickerGroup({
           {/* Render grouped events first */}
           {events.map((evt, i) => {
             const vol = evt.total_volume || 0;
-            const volStr = vol >= 1_000_000 ? `$${(vol / 1_000_000).toFixed(1)}M` : vol >= 1000 ? `$${(vol / 1000).toFixed(0)}K` : `$${vol.toFixed(0)}`;
+            const volStr = formatCompactCurrency(vol);
             const endDate = evt.end_date ? new Date(evt.end_date) : null;
             const timeframe = endDate ? (endDate.getTime() - Date.now() < 7 * 86400000 ? 'Daily' : endDate.getTime() - Date.now() < 35 * 86400000 ? 'Monthly' : 'Long-term') : '';
 
