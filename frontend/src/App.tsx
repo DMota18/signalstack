@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
+import ErrorBoundary from './components/ErrorBoundary';
 import AppShell from './components/AppShell';
 import LandingPage from './pages/LandingPage';
 import SignInPage from './pages/SignInPage';
@@ -30,6 +31,7 @@ function LoadingScreen() {
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <Routes>
       {/* Public routes */}
       <Route path="/" element={<LandingPage />} />
@@ -62,5 +64,6 @@ export default function App() {
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </ErrorBoundary>
   );
 }
