@@ -19,6 +19,11 @@ from backend.services.supabase import get_service_client
 logger = logging.getLogger("services.email")
 
 
+def _app_url() -> str:
+    """Public origin for links in outbound email — never hardcoded."""
+    return get_settings().app_base_url
+
+
 async def send_email_to_user(
     user_id: str,
     subject: str,
@@ -274,7 +279,7 @@ def build_digest_email_html(synthesis: dict, user_name: str = "") -> str:
               <!-- CTA -->
               <tr>
                 <td style="padding:24px 0;" align="center">
-                  <a href="https://signalstack.app/app"
+                  <a href="{_app_url()}/app"
                     style="display:inline-block;padding:10px 24px;background-color:#D4A843;color:#0C0C0E;text-decoration:none;border-radius:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;font-weight:600;">
                     Open dashboard
                   </a>
@@ -287,7 +292,7 @@ def build_digest_email_html(synthesis: dict, user_name: str = "") -> str:
                     Educational market intelligence only. Not investment advice. All investment decisions are your own responsibility.
                   </p>
                   <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:#4A4A4D;margin:8px 0 0;">
-                    SignalStack &middot; <a href="https://signalstack.app/app/settings" style="color:#4A4A4D;">Manage notifications</a>
+                    SignalStack &middot; <a href="{_app_url()}/app/settings" style="color:#4A4A4D;">Manage notifications</a>
                   </p>
                 </td>
               </tr>
@@ -413,7 +418,7 @@ def build_price_alert_email_html(
               <!-- CTA -->
               <tr>
                 <td style="padding:24px 0;" align="center">
-                  <a href="https://signalstack.app/app"
+                  <a href="{_app_url()}/app"
                     style="display:inline-block;padding:10px 24px;background-color:#D4A843;color:#0C0C0E;text-decoration:none;border-radius:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;font-weight:600;">
                     View full analysis
                   </a>
@@ -426,7 +431,7 @@ def build_price_alert_email_html(
                     Educational market intelligence only. Not investment advice. All investment decisions are your own responsibility.
                   </p>
                   <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:#4A4A4D;margin:8px 0 0;">
-                    SignalStack &middot; <a href="https://signalstack.app/app/settings" style="color:#4A4A4D;">Manage alerts</a>
+                    SignalStack &middot; <a href="{_app_url()}/app/settings" style="color:#4A4A4D;">Manage alerts</a>
                   </p>
                 </td>
               </tr>
@@ -577,7 +582,7 @@ def build_earnings_briefing_email_html(
               <!-- CTA -->
               <tr>
                 <td style="padding:24px 0;" align="center">
-                  <a href="https://signalstack.app/app"
+                  <a href="{_app_url()}/app"
                     style="display:inline-block;padding:10px 24px;background-color:#D4A843;color:#0C0C0E;text-decoration:none;border-radius:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;font-weight:600;">
                     View full briefing
                   </a>
@@ -590,7 +595,7 @@ def build_earnings_briefing_email_html(
                     Educational market intelligence only. Not investment advice. All investment decisions are your own responsibility.
                   </p>
                   <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:#4A4A4D;margin:8px 0 0;">
-                    SignalStack &middot; <a href="https://signalstack.app/app/settings" style="color:#4A4A4D;">Manage notifications</a>
+                    SignalStack &middot; <a href="{_app_url()}/app/settings" style="color:#4A4A4D;">Manage notifications</a>
                   </p>
                 </td>
               </tr>
@@ -763,7 +768,7 @@ def build_weekly_email_html(synthesis: dict, user_name: str = "") -> str:
               <!-- CTA -->
               <tr>
                 <td style="padding:24px 0;" align="center">
-                  <a href="https://signalstack.app/app"
+                  <a href="{_app_url()}/app"
                     style="display:inline-block;padding:10px 24px;background-color:#D4A843;color:#0C0C0E;text-decoration:none;border-radius:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;font-weight:600;">
                     View full report
                   </a>
@@ -776,7 +781,7 @@ def build_weekly_email_html(synthesis: dict, user_name: str = "") -> str:
                     Educational market intelligence only. Not investment advice. All investment decisions are your own responsibility.
                   </p>
                   <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:#4A4A4D;margin:8px 0 0;">
-                    SignalStack &middot; <a href="https://signalstack.app/app/settings" style="color:#4A4A4D;">Manage notifications</a>
+                    SignalStack &middot; <a href="{_app_url()}/app/settings" style="color:#4A4A4D;">Manage notifications</a>
                   </p>
                 </td>
               </tr>

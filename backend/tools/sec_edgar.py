@@ -36,7 +36,7 @@ SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 
 # User-Agent header required by SEC — identifies our application
 SEC_HEADERS = {
-    "User-Agent": "SignalStack/1.0 (contact@signalstack.app)",
+    "User-Agent": "SignalStack/1.0 (github.com/DMota18/signalstack)",
     "Accept": "application/json",
 }
 

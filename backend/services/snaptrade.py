@@ -217,7 +217,7 @@ class SnapTradeService:
         if custom_redirect:
             body["customRedirect"] = custom_redirect
         else:
-            body["customRedirect"] = "https://signalstack.app/connections/callback"
+            body["customRedirect"] = f"{get_settings().app_base_url}/connections/callback"
 
         result = await self._request(
             "POST",

@@ -33,8 +33,10 @@ SEED_TICKERS = [
     "BTC-USD", "ETH-USD", "SOL-USD",
 ]
 
-# Base URL — override via CORS_ORIGINS or default
-BASE_URL = "https://signalstack.app"
+def _base_url() -> str:
+    """Public origin for sitemap/robots URLs — derived from DOMAIN."""
+    from backend.config import get_settings
+    return get_settings().app_base_url
 
 
 @router.get("/sitemap.xml")
@@ -82,7 +84,7 @@ async def sitemap():
     for page in static_pages:
         urls.append(
             f"  <url>\n"
-            f"    <loc>{BASE_URL}{page['loc']}</loc>\n"
+            f"    <loc>{_base_url()}{page['loc']}</loc>\n"
             f"    <lastmod>{today}</lastmod>\n"
             f"    <changefreq>{page['changefreq']}</changefreq>\n"
             f"    <priority>{page['priority']}</priority>\n"
@@ -95,7 +97,7 @@ async def sitemap():
         priority = "0.8" if ticker in SEED_TICKERS[:20] else "0.6"
         urls.append(
             f"  <url>\n"
-            f"    <loc>{BASE_URL}/research/{ticker}</loc>\n"
+            f"    <loc>{_base_url()}/research/{ticker}</loc>\n"
             f"    <lastmod>{today}</lastmod>\n"
             f"    <changefreq>daily</changefreq>\n"
             f"    <priority>{priority}</priority>\n"
@@ -122,6 +124,6 @@ async def robots():
         "Disallow: /app/\n"
         "Disallow: /api/\n"
         "\n"
-        f"Sitemap: {BASE_URL}/sitemap.xml\n"
+        f"Sitemap: {_base_url()}/sitemap.xml\n"
     )
     return Response(content=content, media_type="text/plain")

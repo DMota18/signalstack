@@ -436,11 +436,5 @@ def _unix_to_iso(ts: int | None) -> str | None:
 
 
 def _get_app_url(settings) -> str:
-    """Derive the app URL from CORS origins or fallback."""
-    if settings.cors_origins:
-        origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
-        if origins:
-            return origins[0]
-    if settings.app_env == "production":
-        return "https://signalstack.app"
-    return "http://localhost:5173"
+    """Public origin for Stripe redirect URLs — derived from DOMAIN."""
+    return settings.app_base_url

@@ -61,7 +61,7 @@ def create_app() -> FastAPI:
     elif settings.cors_origins:
         origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
     else:
-        origins = ["https://signalstack.app", "https://www.signalstack.app"]
+        origins = [settings.app_base_url]
 
     app.add_middleware(
         CORSMiddleware,

@@ -52,6 +52,21 @@ class Settings(BaseSettings):
     api_version: str = "v1"
     # Comma-separated list of allowed CORS origins for production
     cors_origins: str = ""
+    # Public hostname of the deployed app (e.g. signalstack.example.com).
+    # Shared with Caddy via the same DOMAIN env var; drives email links,
+    # referral links, SEO/OG URLs, OAuth redirects, and the CORS fallback.
+    domain: str = ""
+
+    @property
+    def app_base_url(self) -> str:
+        """Public origin of the deployed app — never hardcode a domain."""
+        if self.domain:
+            return f"https://{self.domain}"
+        if self.cors_origins:
+            first = self.cors_origins.split(",")[0].strip()
+            if first:
+                return first
+        return "http://localhost:3000"
     # --- Redis ---
     redis_url: str = "redis://localhost:6379/0"
     redis_password: str = ""

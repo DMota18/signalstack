@@ -72,7 +72,7 @@ async def register_and_connect(
     # Use the app's origin as the redirect so the user lands back on Settings
     from backend.config import get_settings as _get_settings
     _settings = _get_settings()
-    redirect_base = "http://localhost:3000" if _settings.debug else "https://signalstack.app"
+    redirect_base = "http://localhost:3000" if _settings.debug else _settings.app_base_url
     redirect_url = f"{redirect_base}/app/settings?status=success"
 
     portal_result = await svc.get_connection_portal_url(

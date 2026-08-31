@@ -32,13 +32,13 @@ export default function PublicResearchPage() {
       document.title = `${t} Signal Analysis — Polymarket Odds, Insider Activity, Institutional Flow | SignalStack`;
 
       // Canonical URL
-      setLink('canonical', `https://signalstack.app/research/${t}`);
+      setLink('canonical', `${window.location.origin}/research/${t}`);
 
       // Open Graph
       setMeta('og:title', `${t} — Signal Analysis | SignalStack`);
       setMeta('og:description', `Research ${t}: prediction market odds, insider filings, institutional flow, fundamentals, and news — all in one page.`);
       setMeta('og:type', 'website');
-      setMeta('og:url', `https://signalstack.app/research/${t}`);
+      setMeta('og:url', `${window.location.origin}/research/${t}`);
       setMeta('og:image', `/api/v1/research/${t}/og-image`);
 
       // Twitter Card

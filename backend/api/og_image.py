@@ -177,7 +177,7 @@ async def get_og_image(ticker: str):
 
   <!-- CTA -->
   <text x="1140" y="572" fill="#4A4A4D" font-size="13" font-family="-apple-system,BlinkMacSystemFont,sans-serif" text-anchor="end">
-    signalstack.app/research/{_escape(ticker)}
+    {_display_host()}/research/{_escape(ticker)}
   </text>
 
   <!-- Disclaimer -->
@@ -217,6 +217,13 @@ def _fallback_image(ticker: str) -> Response:
 def _escape(text: str) -> str:
     """Escape text for SVG XML."""
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def _display_host() -> str:
+    """Hostname shown in the OG image CTA — derived from DOMAIN."""
+    from backend.config import get_settings
+    settings = get_settings()
+    return settings.domain or "signalstack"
 
 
 def _fmt_cap(val) -> str:
