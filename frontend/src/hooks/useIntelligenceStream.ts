@@ -96,6 +96,10 @@ export function useIntelligenceStream(): UseIntelligenceStreamReturn {
 
         const decoder = new TextDecoder();
         let buffer = '';
+        // Frame state must persist across chunks: a frame's "event:" line can
+        // arrive in one chunk and its terminating blank line in the next.
+        let currentEvent = '';
+        let currentData = '';
 
         const read = (): Promise<void> =>
           reader.read().then(({ done, value }) => {
@@ -109,9 +113,6 @@ export function useIntelligenceStream(): UseIntelligenceStreamReturn {
             // Parse SSE events from buffer
             const lines = buffer.split('\n');
             buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-            let currentEvent = '';
-            let currentData = '';
 
             for (const line of lines) {
               if (line.startsWith('event: ')) {

@@ -259,12 +259,20 @@ Requires `.env` with Supabase, Anthropic, and Redis credentials at minimum
 ## Running Tests
 
 ```bash
+# Backend — 141 tests (agent loop, hooks/compliance, pipeline,
+# coordinator isolation, tools, jobs, routes, cost control)
 pip install -r backend/requirements.txt -r requirements-dev.txt
 pytest
+
+# Frontend — 12 tests (API client auth/refresh contract, SSE parsing
+# including mid-line chunk splits)
+cd frontend && npm test
 ```
 
-The suite mocks all external APIs and needs no `.env` — fake configuration
-is injected by `tests/conftest.py`.
+The backend suite mocks all external APIs and needs no `.env` — fake
+configuration is injected by `tests/conftest.py`. CI runs both suites,
+lint on both sides, the production build, and applies the full
+migration chain against a real Postgres on every push.
 
 ## Deploying
 
@@ -279,8 +287,8 @@ cd ~/signalstack
 
 ## File Counts
 
-- **63** Python modules (backend)
-- **36** React components/pages (frontend)
+- **63** Python modules (backend) — 141 tests
+- **68** TypeScript modules (frontend, 52 components/pages) — 12 tests
 - **13** Celery tasks
 - **6** specialist AI agents
 - **10** external API integrations
