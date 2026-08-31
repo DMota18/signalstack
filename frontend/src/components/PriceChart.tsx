@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
+import { LightweightCharts, loadLightweightCharts } from '../lib/charts';
 import { Loader2 } from 'lucide-react';
 
 interface PriceChartProps {
@@ -33,29 +34,6 @@ interface CrosshairData {
 
 const TIMEFRAMES = ['1D', '1W', '1M', '3M', '6M', '1Y', '5Y'];
 const INTRADAY_TIMEFRAMES = ['1D', '1W'];
-
-// Load Lightweight Charts from CDN once
-let lwcPromise: Promise<any> | null = null;
-
-function loadLightweightCharts(): Promise<any> {
-  if (lwcPromise) return lwcPromise;
-
-  lwcPromise = new Promise((resolve, reject) => {
-    if ((window as any).LightweightCharts) {
-      resolve((window as any).LightweightCharts);
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js';
-    script.async = true;
-    script.onload = () => resolve((window as any).LightweightCharts);
-    script.onerror = () => reject(new Error('Failed to load Lightweight Charts'));
-    document.head.appendChild(script);
-  });
-
-  return lwcPromise;
-}
 
 function formatVolume(vol: number): string {
   if (vol >= 1_000_000_000) return (vol / 1_000_000_000).toFixed(1) + 'B';
@@ -153,8 +131,7 @@ export default function PriceChart({
   useEffect(() => {
     if (!lwcLoaded || !chartContainerRef.current) return;
 
-    const LWC = (window as any).LightweightCharts;
-    if (!LWC) return;
+    const LWC = LightweightCharts;
 
     // Destroy previous chart
     if (chartRef.current) {
@@ -170,7 +147,7 @@ export default function PriceChart({
       width: chartContainerRef.current.clientWidth,
       height: height,
       layout: {
-        background: { type: 'solid', color: 'transparent' },
+        background: { type: LightweightCharts.ColorType.Solid, color: 'transparent' },
         textColor: textColor,
         fontFamily: "'DM Sans', system-ui, sans-serif",
         fontSize: 11,

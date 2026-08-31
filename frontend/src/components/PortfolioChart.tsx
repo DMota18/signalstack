@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
+import { LightweightCharts, loadLightweightCharts } from '../lib/charts';
 import {
   X, Loader2, CandlestickChart, BarChart3, Activity, LineChart,
   Maximize2, Minimize2,
@@ -40,23 +41,6 @@ interface CrosshairInfo {
   rsi?: number;
   periodReturn?: number;   // % from start to hovered point
   dailyChange?: number;    // % from previous point
-}
-
-// ─── Lightweight Charts CDN loader ───────────────────────────────────────────
-
-let lwcPromise: Promise<any> | null = null;
-function loadLWC(): Promise<any> {
-  if (lwcPromise) return lwcPromise;
-  lwcPromise = new Promise((resolve, reject) => {
-    if ((window as any).LightweightCharts) { resolve((window as any).LightweightCharts); return; }
-    const s = document.createElement('script');
-    s.src = 'https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js';
-    s.async = true;
-    s.onload = () => resolve((window as any).LightweightCharts);
-    s.onerror = () => reject(new Error('Failed to load chart library'));
-    document.head.appendChild(s);
-  });
-  return lwcPromise;
 }
 
 // ─── Utils ───────────────────────────────────────────────────────────────────
@@ -344,7 +328,7 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
 
   // ── Load LWC ─────────────────────────────────────────────────────────────
 
-  useEffect(() => { loadLWC().then(() => setLwcReady(true)).catch(() => {}); }, []);
+  useEffect(() => { loadLightweightCharts().then(() => setLwcReady(true)).catch(() => {}); }, []);
 
   // ── Fetch data ───────────────────────────────────────────────────────────
 
@@ -368,8 +352,7 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
 
   useEffect(() => {
     if (!lwcReady || !mainContainerRef.current || adjustedChartData.length === 0) return;
-    const LWC = (window as any).LightweightCharts;
-    if (!LWC) return;
+    const LWC = LightweightCharts;
 
     // Cleanup
     if (mainChartRef.current) { mainChartRef.current.remove(); mainChartRef.current = null; }
@@ -429,7 +412,7 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
       width: mainContainerRef.current.clientWidth,
       height: chartHeight,
       layout: {
-        background: { type: 'solid', color: 'transparent' },
+        background: { type: LightweightCharts.ColorType.Solid, color: 'transparent' },
         textColor: textMuted,
         fontFamily: "'JetBrains Mono', 'SF Mono', 'Fira Code', monospace",
         fontSize: 10,
@@ -522,19 +505,19 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
 
     if (showSMA && deduped.length > 20) {
       const s = chart.addLineSeries({ color: '#5AC8FA', lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false });
-      s.setData(deduped.map((d, i) => sma20[i] !== null ? { time: d.time, value: sma20[i] } : null).filter(Boolean));
+      s.setData(deduped.flatMap((d, i) => (sma20[i] !== null ? [{ time: d.time, value: sma20[i] as number }] : [])));
     }
 
     if (showEMA && deduped.length > 50) {
       const s = chart.addLineSeries({ color: '#AF52DE', lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false });
-      s.setData(deduped.map((d, i) => ema50[i] !== null ? { time: d.time, value: ema50[i] } : null).filter(Boolean));
+      s.setData(deduped.flatMap((d, i) => (ema50[i] !== null ? [{ time: d.time, value: ema50[i] as number }] : [])));
     }
 
     if (showBB && deduped.length > 20) {
       const sUpper = chart.addLineSeries({ color: '#FF950040', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false });
       const sLower = chart.addLineSeries({ color: '#FF950040', lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false });
-      sUpper.setData(deduped.map((d, i) => bb.upper[i] !== null ? { time: d.time, value: bb.upper[i] } : null).filter(Boolean));
-      sLower.setData(deduped.map((d, i) => bb.lower[i] !== null ? { time: d.time, value: bb.lower[i] } : null).filter(Boolean));
+      sUpper.setData(deduped.flatMap((d, i) => (bb.upper[i] !== null ? [{ time: d.time, value: bb.upper[i] as number }] : [])));
+      sLower.setData(deduped.flatMap((d, i) => (bb.lower[i] !== null ? [{ time: d.time, value: bb.lower[i] as number }] : [])));
     }
 
     // ── Volume ────────────────────────────────────────────────────────────
@@ -627,7 +610,7 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
         width: rsiContainerRef.current.clientWidth,
         height: rsiHeight,
         layout: {
-          background: { type: 'solid', color: 'transparent' },
+          background: { type: LightweightCharts.ColorType.Solid, color: 'transparent' },
           textColor: textMuted,
           fontFamily: "'JetBrains Mono', monospace",
           fontSize: 9,
@@ -645,8 +628,8 @@ export default function PortfolioChart({ holdings }: { holdings: any[] }) {
       rsiChartRef.current = rsiChart;
 
       // RSI line
-      const rsiSeries = rsiChart.addLineSeries({ color: '#FFD60A', lineWidth: 1.5, crosshairMarkerVisible: false });
-      rsiSeries.setData(deduped.map((d, i) => rsiValues[i] !== null ? { time: d.time, value: rsiValues[i] } : null).filter(Boolean));
+      const rsiSeries = rsiChart.addLineSeries({ color: '#FFD60A', lineWidth: 2, crosshairMarkerVisible: false });
+      rsiSeries.setData(deduped.flatMap((d, i) => (rsiValues[i] !== null ? [{ time: d.time, value: rsiValues[i] as number }] : [])));
 
       // Overbought/oversold lines
       const ob = rsiChart.addLineSeries({ color: `${redColor}40`, lineWidth: 1, lineStyle: 2, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false });

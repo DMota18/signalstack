@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
+import { LightweightCharts, loadLightweightCharts } from '../lib/charts';
 import { Loader2, Plus, X } from 'lucide-react';
 
 interface PerformanceComparisonProps {
@@ -10,20 +11,6 @@ interface PerformanceComparisonProps {
 
 const LINE_COLORS = ['#D4A843', '#34C759', '#FF453A', '#5856D6', '#FF9500', '#007AFF', '#AF52DE', '#5AC778'];
 
-let lwcPromise: Promise<any> | null = null;
-function loadLWC(): Promise<any> {
-  if (lwcPromise) return lwcPromise;
-  lwcPromise = new Promise((resolve, reject) => {
-    if ((window as any).LightweightCharts) { resolve((window as any).LightweightCharts); return; }
-    const s = document.createElement('script');
-    s.src = 'https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js';
-    s.async = true;
-    s.onload = () => resolve((window as any).LightweightCharts);
-    s.onerror = () => reject(new Error('Failed to load chart'));
-    document.head.appendChild(s);
-  });
-  return lwcPromise;
-}
 
 /**
  * PerformanceComparison — Normalized % return overlay chart.
@@ -45,7 +32,7 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
   const textMuted = isDark ? '#9A9A9D' : '#5A5A5D';
   const gridColor = isDark ? '#141416' : '#F0EEE8';
 
-  useEffect(() => { loadLWC().then(() => setLwcReady(true)).catch(() => {}); }, []);
+  useEffect(() => { loadLightweightCharts().then(() => setLwcReady(true)).catch(() => {}); }, []);
 
   // Fetch data for all tickers
   useEffect(() => {
@@ -76,8 +63,7 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
   // Build chart
   useEffect(() => {
     if (!lwcReady || !containerRef.current) return;
-    const LWC = (window as any).LightweightCharts;
-    if (!LWC) return;
+    const LWC = LightweightCharts;
 
     if (chartRef.current) { chartRef.current.remove(); chartRef.current = null; }
 
@@ -85,7 +71,7 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
       width: containerRef.current.clientWidth,
       height: 280,
       layout: {
-        background: { type: 'solid', color: 'transparent' },
+        background: { type: LightweightCharts.ColorType.Solid, color: 'transparent' },
         textColor: textMuted,
         fontFamily: "'DM Sans', system-ui, sans-serif",
         fontSize: 10,
@@ -118,7 +104,7 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
 
       const series = chart.addLineSeries({
         color: LINE_COLORS[idx % LINE_COLORS.length],
-        lineWidth: idx === 0 ? 2 : 1.5,
+        lineWidth: idx === 0 ? 2 : 1,
         crosshairMarkerVisible: true,
         crosshairMarkerRadius: 3,
         title: t,
@@ -128,7 +114,7 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
 
     // Zero line
     chart.addLineSeries({
-      color: textMuted, lineWidth: 0.5, lineStyle: 2,
+      color: textMuted, lineWidth: 1, lineStyle: 2,
       crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false,
     }).setData(
       (chartData[`${tickers[0]}_${timeframe}`] || []).map((p: any) => ({ time: p.timestamp, value: 0 }))
