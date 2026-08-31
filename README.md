@@ -1,10 +1,12 @@
 # SignalStack
 
+[![CI](https://github.com/DMota18/signalstack/actions/workflows/ci.yml/badge.svg)](https://github.com/DMota18/signalstack/actions/workflows/ci.yml)
+
 An AI-powered portfolio intelligence platform that monitors your holdings and delivers actionable research using Claude, prediction markets, insider filings, institutional flow, and macroeconomic indicators.
 
 Built with FastAPI, React, Supabase, and Claude's tool-use API.
 
-Status: Active development. Core features are fully functional including dashboard, holdings, markets feed and AI insights. Polymarket integration is currently partially implemented, and the insider agent is still in development. 
+Status: Active development. Core features are fully functional including dashboard, holdings, markets feed and AI insights. Polymarket integration is currently partially implemented, and the insider agent is still in development. See [Known limitations](#known-limitations--roadmap).
 
 ## Screenshots
 
@@ -49,7 +51,7 @@ When intelligence is generated (on-demand or scheduled), the system:
 
 3. **Synthesizes results** — the coordinator combines all six agent outputs into a single structured intelligence report with per-holding narratives, net signal scores, portfolio-level insights, and concentration warnings.
 
-4. **Enforces compliance programmatically** — a hooks pipeline (not prompt instructions) blocks advice language ("buy", "sell", "you should"), injects the disclaimer, redacts PII, and normalizes timestamps.
+4. **Enforces compliance programmatically** — a hooks pipeline (not prompt instructions) blocks advice language ("Buy NVDA", "I recommend", "you should sell"), re-prompts the model to reformulate violations (with a guaranteed regex fallback), injects the disclaimer, redacts PII, and normalizes timestamps. Because REST, SSE streaming, and scheduled jobs all share one pipeline core, no delivery path can skip it.
 
 ### The Agentic Loop
 
@@ -72,52 +74,54 @@ Every intelligence run tracks token usage and estimated cost. A per-user daily s
 
 ## Architecture
 
+```mermaid
+flowchart TB
+    Browser["React PWA<br/>typed API client · React Query · SSE stream"]
+    Caddy["Caddy<br/>auto-HTTPS · security headers · CSP"]
+    API["FastAPI<br/>APIResponse envelope · JWT auth · per-tier rate limiting"]
+    Pipeline["Intelligence pipeline<br/>one event-generator core behind REST, SSE, and jobs"]
+    Coordinator["Coordinator<br/>dispatches sequentially, synthesizes via produce_synthesis"]
+    Subagents["6 isolated subagents<br/>Sentiment · Polymarket · Insider · Institutional · Macro · Profile"]
+    Hooks["Hooks pipeline<br/>pre-exec blocking · post-exec normalization/PII ·<br/>advice-language interceptor + reformulation loop"]
+    Tools["MCP-style tools<br/>4-category errors · scoped per agent"]
+    Celery["Celery beat + workers<br/>queues: intelligence · sync · monitor · maintenance"]
+    Redis[("Redis<br/>broker + results")]
+    Supabase[("Supabase<br/>Postgres · Auth · RLS")]
+    Claude["Claude API<br/>stop_reason-driven loop · cost caps · model fallback"]
+    Providers["Finnhub · Polymarket · FRED · SEC EDGAR · SnapTrade"]
+    Extras["Stripe · Resend · Web Push"]
+
+    Browser --> Caddy --> API
+    API --> Pipeline
+    Celery --> Pipeline
+    Celery --- Redis
+    Pipeline --> Coordinator --> Subagents
+    Subagents --> Tools --> Providers
+    Coordinator --> Claude
+    Subagents --> Claude
+    Pipeline --> Hooks
+    Tools --> Hooks
+    API --- Supabase
+    Pipeline --- Supabase
+    API --- Extras
 ```
-Browser (React PWA)
-  |
-  |-- SSE stream (/intelligence/stream)
-  |-- REST API (/api/v1/*)
-  |
-Caddy (reverse proxy, auto-HTTPS)
-  |
-FastAPI (uvicorn)
-  |-- API routes (auth, portfolio, research, billing, etc.)
-  |-- Intelligence engine (coordinator + 6 subagents)
-  |-- Hooks pipeline (pre/post execution, output interception)
-  |
-Celery + Redis
-  |-- Daily digest (4-10 PM UTC, timezone-aware delivery)
-  |-- Weekly report (Sunday evenings)
-  |-- Price monitor (every 5 min during market hours)
-  |-- Pre-earnings briefings (8 AM & 4 PM ET)
-  |-- Portfolio sync (every 30 min, market hours)
-  |-- Polymarket catalog sync (every 30 min)
-  |
-Supabase (PostgreSQL + Auth + RLS)
-  |-- Row-level security on all user tables
-  |-- JWT verification server-side via PyJWT
-  |
-External APIs
-  |-- Claude (intelligence generation)
-  |-- Polymarket Gamma API (prediction markets)
-  |-- Finnhub (quotes, news, insider trades)
-  |-- FRED (macro indicators)
-  |-- SEC EDGAR (13F filings)
-  |-- SnapTrade (brokerage OAuth)
-  |-- Stripe (billing)
-  |-- Resend (email delivery)
-  |-- Web Push (VAPID notifications)
-```
+
+Scheduled work (Celery beat, all UTC — delivery respects each user's timezone
+via zoneinfo): daily digest scans hourly 4-10 PM, weekly report Sunday
+evenings, price monitor every 5 minutes in market hours, pre-earnings
+briefings twice daily, portfolio + Polymarket catalog syncs every 30 minutes.
 
 ## Tech Stack
 
 **Backend:** Python 3.11, FastAPI, Celery, Redis, Supabase (PostgreSQL), yfinance
 
-**Frontend:** React 18, TypeScript, Tailwind CSS, Vite, Lightweight Charts, PWA with service worker
+**Frontend:** React 18, TypeScript, Tailwind CSS, Vite, Lightweight Charts, PWA (vite-plugin-pwa + Workbox)
 
 **AI:** Claude API (Anthropic) with structured tool use — hub-and-spoke coordinator pattern
 
 **Infrastructure:** Docker Compose, Caddy (auto-HTTPS via Let's Encrypt), AWS EC2
+
+**Quality tooling:** pytest + ruff (backend), vitest + ESLint + Prettier (frontend), GitHub Actions CI (lint, tests, build, and the migration chain applied against a real Postgres)
 
 ## Backend Structure
 
@@ -160,10 +164,15 @@ frontend/src/
 
 When a user triggers intelligence generation, the frontend connects via SSE (Server-Sent Events) using `fetch()` + `ReadableStream` (not `EventSource`, which can't send auth headers). The stream emits:
 
+- `status` — phase updates (budget check, portfolio load, compliance checks)
 - `agent_start` — agent name and index (drives the progress UI)
 - `agent_done` — agent status, duration, errors
 - `complete` — final synthesis with per-holding narratives and signals
 - `error` — failure details
+
+The stream is a thin adapter over the same pipeline the REST endpoint and
+scheduled jobs use, so streamed output passes through the identical
+compliance interception.
 
 The UI shows a live progress bar with agent-by-agent status updates as each specialist completes its analysis.
 
@@ -211,6 +220,17 @@ Stripe Checkout handles payment, webhooks manage tier transitions, and referral 
 - Non-root Docker user
 - Rate limiting per user tier
 - Stripe webhook signature verification
+
+## Known Limitations & Roadmap
+
+Honest state of the edges — these are deliberate scoping decisions, not surprises:
+
+- **Insider agent** is still in development (SEC EDGAR Form 4 parsing); **Polymarket agent** is partially implemented — both degrade gracefully and are reported as gaps in the synthesis, never hidden.
+- **Rate limiting** is an in-process sliding window — correct per instance, but multi-instance deployment would move the counters to Redis.
+- **Frontend `any` reduction is ongoing**: the API client and portfolio pages are fully typed; remaining usages are tracked as ESLint warnings (181 at last count) rather than suppressed, so the debt stays visible.
+- **React Query** is adopted on the portfolio pages; remaining pages migrate incrementally as they're touched.
+- **Offline mode** serves the precached app shell and last-cached data; an explicit "data may be stale" banner is on the roadmap.
+- **Prompt caching** on the Case Facts block across the six-agent fan-out is the next obvious Claude cost win.
 
 ## Running Locally
 
