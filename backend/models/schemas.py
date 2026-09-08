@@ -5,10 +5,10 @@ These enforce validation at the API boundary — invalid data
 never reaches the service layer.
 """
 
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, Literal
 from datetime import datetime
+from typing import Literal
 
+from pydantic import BaseModel, EmailStr, Field
 
 # ============================================================================
 # STANDARD RESPONSE ENVELOPE
@@ -18,15 +18,15 @@ from datetime import datetime
 class APIResponse(BaseModel):
     """Standard response envelope. All endpoints return this."""
     status: Literal["ok", "error"]
-    data: Optional[dict | list] = None
-    error: Optional[dict] = None
+    data: dict | list | None = None
+    error: dict | None = None
 
     @classmethod
     def success(cls, data: dict | list | None = None) -> "APIResponse":
         return cls(status="ok", data=data)
 
     @classmethod
-    def fail(cls, message: str, code: str = "unknown", details: Optional[dict] = None) -> "APIResponse":
+    def fail(cls, message: str, code: str = "unknown", details: dict | None = None) -> "APIResponse":
         error = {"code": code, "message": message}
         if details:
             error["details"] = details
@@ -40,7 +40,7 @@ class APIResponse(BaseModel):
 class SignUpRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
-    display_name: Optional[str] = Field(None, max_length=100)
+    display_name: str | None = Field(None, max_length=100)
 
 class SignInRequest(BaseModel):
     email: EmailStr
@@ -62,20 +62,20 @@ class AuthResponse(BaseModel):
 
 class ProfileUpdate(BaseModel):
     """Fields a user can update on their own profile."""
-    display_name: Optional[str] = Field(None, max_length=100)
-    timezone: Optional[str] = Field(None, max_length=50)
-    push_enabled: Optional[bool] = None
-    email_enabled: Optional[bool] = None
+    display_name: str | None = Field(None, max_length=100)
+    timezone: str | None = Field(None, max_length=50)
+    push_enabled: bool | None = None
+    email_enabled: bool | None = None
 
 class ProfileResponse(BaseModel):
     id: str
     email: str
-    display_name: Optional[str]
+    display_name: str | None
     tier: str
     timezone: str
     push_enabled: bool
     email_enabled: bool
-    onboarded_at: Optional[datetime]
+    onboarded_at: datetime | None
     created_at: datetime
 
 
@@ -89,9 +89,9 @@ VALID_SECTORS = [
 ]
 
 class InvestorProfileUpdate(BaseModel):
-    risk_appetite: Optional[Literal["conservative", "moderate", "growth", "aggressive"]] = None
-    sector_interests: Optional[list[str]] = None
-    discovery_mode: Optional[Literal["adjacent", "contrarian", "momentum", "under_the_radar"]] = None
+    risk_appetite: Literal["conservative", "moderate", "growth", "aggressive"] | None = None
+    sector_interests: list[str] | None = None
+    discovery_mode: Literal["adjacent", "contrarian", "momentum", "under_the_radar"] | None = None
 
     def model_post_init(self, __context):
         if self.sector_interests is not None:
@@ -112,23 +112,23 @@ class InvestorProfileResponse(BaseModel):
 
 class HoldingResponse(BaseModel):
     ticker: str
-    security_name: Optional[str]
+    security_name: str | None
     security_type: str
     quantity: float
-    current_price: Optional[float]
-    market_value: Optional[float]
-    pct_of_portfolio: Optional[float]
-    total_gain_pct: Optional[float]
-    day_gain_pct: Optional[float]
+    current_price: float | None
+    market_value: float | None
+    pct_of_portfolio: float | None
+    total_gain_pct: float | None
+    day_gain_pct: float | None
     synced_at: datetime
 
 class PortfolioResponse(BaseModel):
     id: str
     brokerage_name: str
-    account_name: Optional[str]
-    total_value: Optional[float]
-    cash_balance: Optional[float]
-    day_change_pct: Optional[float]
+    account_name: str | None
+    total_value: float | None
+    cash_balance: float | None
+    day_change_pct: float | None
     holdings: list[HoldingResponse]
     synced_at: datetime
 
@@ -153,10 +153,10 @@ class AlertResponse(BaseModel):
     id: str
     alert_type: str
     title: str
-    related_tickers: Optional[list[str]]
-    signals_used: Optional[list[str]]
+    related_tickers: list[str] | None
+    signals_used: list[str] | None
     body_json: dict
-    read_at: Optional[datetime]
+    read_at: datetime | None
     created_at: datetime
 
 class AlertFeedbackRequest(BaseModel):
@@ -170,8 +170,8 @@ class AlertFeedbackRequest(BaseModel):
 class BrokerageConnectionResponse(BaseModel):
     id: str
     brokerage_name: str
-    account_name: Optional[str]
-    account_type: Optional[str]
+    account_name: str | None
+    account_type: str | None
     status: str
-    last_sync_at: Optional[datetime]
+    last_sync_at: datetime | None
     created_at: datetime

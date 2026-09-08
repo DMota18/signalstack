@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
+import { LightweightCharts, loadLightweightCharts } from '../lib/charts';
 import { Loader2, Plus, X } from 'lucide-react';
 
 interface PerformanceComparisonProps {
@@ -10,20 +11,6 @@ interface PerformanceComparisonProps {
 
 const LINE_COLORS = ['#D4A843', '#34C759', '#FF453A', '#5856D6', '#FF9500', '#007AFF', '#AF52DE', '#5AC778'];
 
-let lwcPromise: Promise<any> | null = null;
-function loadLWC(): Promise<any> {
-  if (lwcPromise) return lwcPromise;
-  lwcPromise = new Promise((resolve, reject) => {
-    if ((window as any).LightweightCharts) { resolve((window as any).LightweightCharts); return; }
-    const s = document.createElement('script');
-    s.src = 'https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js';
-    s.async = true;
-    s.onload = () => resolve((window as any).LightweightCharts);
-    s.onerror = () => reject(new Error('Failed to load chart'));
-    document.head.appendChild(s);
-  });
-  return lwcPromise;
-}
 
 /**
  * PerformanceComparison — Normalized % return overlay chart.
@@ -44,9 +31,8 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
   const gold = isDark ? '#D4A843' : '#8B6914';
   const textMuted = isDark ? '#9A9A9D' : '#5A5A5D';
   const gridColor = isDark ? '#141416' : '#F0EEE8';
-  const surface = isDark ? '#151517' : '#FFFFFF';
 
-  useEffect(() => { loadLWC().then(() => setLwcReady(true)).catch(() => {}); }, []);
+  useEffect(() => { loadLightweightCharts().then(() => setLwcReady(true)).catch(() => {}); }, []);
 
   // Fetch data for all tickers
   useEffect(() => {
@@ -61,7 +47,9 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
           if (res.status === 'ok' && Array.isArray(res.data) && res.data.length > 0) {
             return { ticker: t, data: res.data };
           }
-        } catch {}
+        } catch {
+          /* non-fatal: chart fetch failed for this ticker — fall through to empty data */
+        }
         return { ticker: t, data: [] };
       })
     ).then((results) => {
@@ -75,8 +63,7 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
   // Build chart
   useEffect(() => {
     if (!lwcReady || !containerRef.current) return;
-    const LWC = (window as any).LightweightCharts;
-    if (!LWC) return;
+    const LWC = LightweightCharts;
 
     if (chartRef.current) { chartRef.current.remove(); chartRef.current = null; }
 
@@ -84,7 +71,7 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
       width: containerRef.current.clientWidth,
       height: 280,
       layout: {
-        background: { type: 'solid', color: 'transparent' },
+        background: { type: LightweightCharts.ColorType.Solid, color: 'transparent' },
         textColor: textMuted,
         fontFamily: "'DM Sans', system-ui, sans-serif",
         fontSize: 10,
@@ -117,7 +104,7 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
 
       const series = chart.addLineSeries({
         color: LINE_COLORS[idx % LINE_COLORS.length],
-        lineWidth: idx === 0 ? 2 : 1.5,
+        lineWidth: idx === 0 ? 2 : 1,
         crosshairMarkerVisible: true,
         crosshairMarkerRadius: 3,
         title: t,
@@ -127,7 +114,7 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
 
     // Zero line
     chart.addLineSeries({
-      color: textMuted, lineWidth: 0.5, lineStyle: 2,
+      color: textMuted, lineWidth: 1, lineStyle: 2,
       crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false,
     }).setData(
       (chartData[`${tickers[0]}_${timeframe}`] || []).map((p: any) => ({ time: p.timestamp, value: 0 }))
@@ -167,10 +154,10 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
           {tickers.map((t, i) => (
             <span key={t} className="text-[10px] font-body font-medium px-2 py-0.5 rounded-full flex items-center gap-1"
               style={{ background: `${LINE_COLORS[i % LINE_COLORS.length]}15`, color: LINE_COLORS[i % LINE_COLORS.length], border: `0.5px solid ${LINE_COLORS[i % LINE_COLORS.length]}30` }}>
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: LINE_COLORS[i % LINE_COLORS.length] }} />
+              <span className="w-1.5 h-1.5 rounded-full" aria-hidden="true" style={{ background: LINE_COLORS[i % LINE_COLORS.length] }} />
               {t}
               {t !== baseTicker && (
-                <X size={8} className="cursor-pointer opacity-60 hover:opacity-100" onClick={() => removeTicker(t)} />
+                <X size={8} role="button" aria-label={`Remove ${t} from comparison`} className="cursor-pointer opacity-60 hover:opacity-100" onClick={() => removeTicker(t)} />
               )}
             </span>
           ))}
@@ -184,11 +171,12 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
                 onKeyDown={(e) => e.key === 'Enter' && addTicker()}
                 placeholder="Add..."
                 maxLength={6}
+                aria-label="Ticker to add to comparison"
                 className="text-[10px] font-body px-2 py-0.5 rounded-md outline-none w-16"
                 style={{ background: isDark ? '#0C0C0E' : '#F8F7F4', border: `0.5px solid ${isDark ? '#2A2A2D' : '#D0D0D0'}`, color: isDark ? '#E8E6E1' : '#1A1A1D' }}
               />
-              <button onClick={addTicker} className="text-[10px]" style={{ color: gold }}>
-                <Plus size={12} />
+              <button onClick={addTicker} aria-label="Add ticker to comparison" className="text-[10px]" style={{ color: gold }}>
+                <Plus size={12} aria-hidden="true" />
               </button>
             </div>
           )}
@@ -197,7 +185,7 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
         {/* Timeframe */}
         <div className="flex gap-0.5">
           {tfOptions.map((tf) => (
-            <button key={tf} onClick={() => setTimeframe(tf)}
+            <button key={tf} onClick={() => setTimeframe(tf)} aria-pressed={timeframe === tf}
               className="text-[10px] font-body px-2 py-1 rounded transition-colors"
               style={{ background: timeframe === tf ? `${gold}20` : 'transparent', color: timeframe === tf ? gold : textMuted }}>
               {tf}
@@ -227,7 +215,7 @@ export default function PerformanceComparison({ baseTicker, similarTickers = [] 
             <Loader2 size={18} className="animate-spin" style={{ color: gold }} />
           </div>
         )}
-        <div ref={containerRef} style={{ minHeight: 280 }} />
+        <div ref={containerRef} role="img" aria-label="Performance comparison chart" style={{ minHeight: 280 }} />
       </div>
 
       <p className="text-[9px] font-body mt-2" style={{ color: isDark ? '#2A2A2D' : '#D0D0D0' }}>

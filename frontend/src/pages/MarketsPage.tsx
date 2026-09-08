@@ -1,17 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
 import AlertCard from '../components/AlertCard';
 import PolymarketPanel from '../components/PolymarketPanel';
-import ProbabilityGauge from '../components/ProbabilityGauge';
 import {
-  Loader2, Clock, ExternalLink, TrendingUp, TrendingDown,
-  Briefcase, Globe, Activity, CalendarDays, Bell, BarChart3,
-  RefreshCw, Newspaper, Landmark, Users,
+  Loader2, ExternalLink, TrendingUp, TrendingDown, Activity, CalendarDays, Bell,
+  RefreshCw, Newspaper, Landmark,
 } from 'lucide-react';
 
 import { getLogoUrl } from '../lib/brandColors';
+import { formatCurrency, formatCompactCurrency, formatPercent, formatNumber } from '../lib/format';
 
 type MarketTab = 'news' | 'earnings' | 'polymarket' | 'economy' | 'congress' | 'alerts';
 
@@ -29,16 +28,21 @@ function fmtIndicator(val: any, units: string): string {
   if (val == null) return '—';
   const n = Number(val);
   if (isNaN(n)) return String(val);
-  if (units.toLowerCase().includes('percent') || units.toLowerCase().includes('rate')) return `${n.toFixed(2)}%`;
-  if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-  if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
-  return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  if (units.toLowerCase().includes('percent') || units.toLowerCase().includes('rate')) return formatPercent(n);
+  if (Math.abs(n) >= 1e9) return formatCompactCurrency(n);
+  return formatNumber(n);
 }
+
+const MARKET_TABS: MarketTab[] = ['news', 'earnings', 'polymarket', 'economy', 'congress', 'alerts'];
 
 export default function MarketsPage() {
   const { isDark } = useTheme();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<MarketTab>('news');
+  const location = useLocation();
+  const requestedTab = (location.state as { tab?: string } | null)?.tab;
+  const [tab, setTab] = useState<MarketTab>(
+    MARKET_TABS.includes(requestedTab as MarketTab) ? (requestedTab as MarketTab) : 'news'
+  );
 
   // News state
   const [newsMode, setNewsMode] = useState<'holdings' | 'general'>('holdings');
@@ -69,6 +73,11 @@ export default function MarketsPage() {
   const greenColor = isDark ? '#34C759' : '#28A745';
   const redColor = isDark ? '#FF453A' : '#DC3545';
 
+  // Honor tab requests from navigation while already mounted
+  useEffect(() => {
+    if (MARKET_TABS.includes(requestedTab as MarketTab)) setTab(requestedTab as MarketTab);
+  }, [requestedTab]);
+
   // Load data per tab
   useEffect(() => { loadTab(); }, [tab, newsMode]);
 
@@ -82,8 +91,9 @@ export default function MarketsPage() {
       if (newsMode === 'general' && !marketNews) {
         // Try NewsAPI first (better sources), fall back to Finnhub
         const r = await api.getNewsApiHeadlines(25);
-        if (r.status === 'ok' && r.data?.articles?.length > 0) {
-          setMarketNews(r.data.articles);
+        const headlines = r.data?.articles ?? [];
+        if (r.status === 'ok' && headlines.length > 0) {
+          setMarketNews(headlines);
         } else {
           const fallback = await api.getMarketNews(25);
           if (fallback.status === 'ok') setMarketNews(fallback.data?.articles || []);
@@ -147,13 +157,13 @@ export default function MarketsPage() {
       {/* Tab bar */}
       <div className="flex gap-1 flex-wrap">
         {tabs.map((t) => (
-          <button key={t.value} onClick={() => setTab(t.value)}
+          <button key={t.value} onClick={() => setTab(t.value)} aria-pressed={tab === t.value}
             className="flex items-center gap-1.5 text-[11px] font-body px-3 py-1.5 rounded-md transition-colors"
             style={{
               background: tab === t.value ? `${gold}15` : 'transparent',
               color: tab === t.value ? gold : textMuted,
             }}>
-            <t.icon size={12} /> {t.label}
+            <t.icon size={12} aria-hidden="true" /> {t.label}
           </button>
         ))}
       </div>
@@ -163,7 +173,7 @@ export default function MarketsPage() {
         <div className="space-y-3">
           <div className="flex gap-1">
             {(['holdings', 'general'] as const).map((m) => (
-              <button key={m} onClick={() => setNewsMode(m)}
+              <button key={m} onClick={() => setNewsMode(m)} aria-pressed={newsMode === m}
                 className="text-[10px] font-body px-2.5 py-1 rounded transition-colors"
                 style={{
                   background: newsMode === m ? `${gold}12` : 'transparent',
@@ -237,7 +247,7 @@ export default function MarketsPage() {
             <button onClick={handleRefreshEarnings} disabled={refreshing}
               className="flex items-center gap-1.5 text-[10px] font-body px-2.5 py-1 rounded transition-all disabled:opacity-40"
               style={{ color: textMuted, border: `0.5px solid ${isDark ? '#2A2A2D' : '#D0D0D0'}` }}>
-              <RefreshCw size={10} className={refreshing ? 'animate-spin' : ''} />
+              <RefreshCw size={10} className={refreshing ? 'animate-spin' : ''} aria-hidden="true" />
               Refresh
             </button>
           </div>
@@ -289,7 +299,7 @@ export default function MarketsPage() {
                         <div className="flex items-center gap-4">
                           {e.consensus_eps != null && (
                             <span className="text-[10px] font-numeric" style={{ color: textMuted }}>
-                              EPS est ${e.consensus_eps.toFixed(2)}
+                              EPS est {formatCurrency(e.consensus_eps)}
                             </span>
                           )}
                           <span className="text-sm font-display" style={{ color: e.days_until <= 5 ? gold : textMuted }}>

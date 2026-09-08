@@ -13,13 +13,17 @@ Common mappings: BTC→bitcoin, ETH→ethereum, SOL→solana.
 The tool handles the mapping internally.
 """
 
-import httpx
 import logging
-from typing import Optional
+
+import httpx
 
 from backend.tools.base import (
-    ToolResult, transient_error, validation_error,
-    business_error, classify_http_error, retry_with_backoff,
+    ToolResult,
+    business_error,
+    classify_http_error,
+    retry_with_backoff,
+    transient_error,
+    validation_error,
 )
 
 logger = logging.getLogger("tools.coingecko")

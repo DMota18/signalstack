@@ -16,13 +16,12 @@ Provider modules:
 """
 
 import logging
-from typing import Optional
 
-from backend.tools.finnhub import FINNHUB_TOOL_SCHEMAS, FINNHUB_TOOL_EXECUTORS
-from backend.tools.fred import FRED_TOOL_SCHEMAS, FRED_TOOL_EXECUTORS
-from backend.tools.coingecko import COINGECKO_TOOL_SCHEMAS, COINGECKO_TOOL_EXECUTORS
-from backend.tools.polymarket import POLYMARKET_TOOL_SCHEMAS, POLYMARKET_TOOL_EXECUTORS
-from backend.tools.sec_edgar import SEC_EDGAR_TOOL_SCHEMAS, SEC_EDGAR_TOOL_EXECUTORS
+from backend.tools.coingecko import COINGECKO_TOOL_EXECUTORS, COINGECKO_TOOL_SCHEMAS
+from backend.tools.finnhub import FINNHUB_TOOL_EXECUTORS, FINNHUB_TOOL_SCHEMAS
+from backend.tools.fred import FRED_TOOL_EXECUTORS, FRED_TOOL_SCHEMAS
+from backend.tools.polymarket import POLYMARKET_TOOL_EXECUTORS, POLYMARKET_TOOL_SCHEMAS
+from backend.tools.sec_edgar import SEC_EDGAR_TOOL_EXECUTORS, SEC_EDGAR_TOOL_SCHEMAS
 
 logger = logging.getLogger("tools.registry")
 

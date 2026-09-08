@@ -5,8 +5,12 @@ No custom JWT logic — Supabase handles signup, signin, and token refresh.
 """
 
 from fastapi import APIRouter, HTTPException, status
+
 from backend.models.schemas import (
-    SignUpRequest, SignInRequest, RefreshRequest, APIResponse,
+    APIResponse,
+    RefreshRequest,
+    SignInRequest,
+    SignUpRequest,
 )
 from backend.services.supabase import get_anon_client
 

@@ -129,6 +129,7 @@ export default function TickerSearch() {
           onFocus={() => { if (results.length > 0) setShowDropdown(true); }}
           onKeyDown={handleKeyDown}
           placeholder="Search stocks..."
+          aria-label="Search stocks"
           className="flex-1 text-xs font-body outline-none bg-transparent"
           style={{ color: isDark ? '#E8E6E1' : '#1A1A1D' }}
           maxLength={50}

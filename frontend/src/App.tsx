@@ -1,6 +1,6 @@
-import { Routes, Route, Navigate, Link } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
-import { useTheme } from './hooks/useTheme';
+import ErrorBoundary from './components/ErrorBoundary';
 import AppShell from './components/AppShell';
 import LandingPage from './pages/LandingPage';
 import SignInPage from './pages/SignInPage';
@@ -24,13 +24,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function LoadingScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <span className="font-display text-lg" style={{ color: '#D4A843' }}>Zelador Analytics</span>
+      <span className="font-display text-lg" style={{ color: '#D4A843' }}>SignalStack</span>
     </div>
   );
 }
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <Routes>
       {/* Public routes */}
       <Route path="/" element={<LandingPage />} />
@@ -54,14 +55,15 @@ export default function App() {
         <Route path="alerts/:alertId" element={<AlertDetailPage />} />
         <Route path="settings" element={<SettingsPage />} />
 
-        {/* Backward compat — old routes redirect to new locations */}
-        <Route path="alerts" element={<Navigate to="/app/markets" replace />} />
-        <Route path="earnings" element={<Navigate to="/app/markets" replace />} />
-        <Route path="news" element={<Navigate to="/app/markets" replace />} />
+        {/* Backward compat — old routes land on the matching Markets tab */}
+        <Route path="alerts" element={<Navigate to="/app/markets" replace state={{ tab: 'alerts' }} />} />
+        <Route path="earnings" element={<Navigate to="/app/markets" replace state={{ tab: 'earnings' }} />} />
+        <Route path="news" element={<Navigate to="/app/markets" replace state={{ tab: 'news' }} />} />
       </Route>
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </ErrorBoundary>
   );
 }

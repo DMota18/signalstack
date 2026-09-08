@@ -39,7 +39,7 @@ export default function SignUpPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Link to="/">
-            <h1 className="font-display text-2xl tracking-wide" style={{ color: gold }}>Zelador Analytics</h1>
+            <h1 className="font-display text-2xl tracking-wide" style={{ color: gold }}>SignalStack</h1>
           </Link>
           <p className="text-sm font-body mt-2" style={{ color: textMuted }}>
             Every signal on your stock. One page.
@@ -55,8 +55,9 @@ export default function SignUpPage() {
           )}
 
           <div>
-            <label className="block text-xs font-body mb-1.5" style={{ color: textMuted }}>Name</label>
+            <label htmlFor="signup-name" className="block text-xs font-body mb-1.5" style={{ color: textMuted }}>Name</label>
             <input
+              id="signup-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -67,8 +68,9 @@ export default function SignUpPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-body mb-1.5" style={{ color: textMuted }}>Email</label>
+            <label htmlFor="signup-email" className="block text-xs font-body mb-1.5" style={{ color: textMuted }}>Email</label>
             <input
+              id="signup-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -79,8 +81,9 @@ export default function SignUpPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-body mb-1.5" style={{ color: textMuted }}>Password</label>
+            <label htmlFor="signup-password" className="block text-xs font-body mb-1.5" style={{ color: textMuted }}>Password</label>
             <input
+              id="signup-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -103,12 +106,12 @@ export default function SignUpPage() {
               style={{ accentColor: gold }}
             />
             <span className="text-[11px] font-body leading-relaxed" style={{ color: textMuted }}>
-              I understand that Zelador Analytics provides educational market intelligence only and does not offer financial, investment, or trading advice. All decisions are my own responsibility.
+              I understand that SignalStack provides educational market intelligence only and does not offer financial, investment, or trading advice. All decisions are my own responsibility.
             </span>
           </label>
 
           <button type="submit" disabled={loading || !disclaimer} className="btn-gold w-full disabled:opacity-50 flex items-center justify-center gap-2">
-            {loading && <Loader2 size={14} className="animate-spin" />}
+            {loading && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
             {loading ? 'Creating account...' : 'Create free account'}
           </button>
         </form>

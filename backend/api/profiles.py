@@ -4,10 +4,13 @@ User profile management and investor profile (risk/sector/discovery preferences)
 """
 
 from fastapi import APIRouter, Depends
+
 from backend.models.schemas import (
-    APIResponse, ProfileUpdate, InvestorProfileUpdate,
+    APIResponse,
+    InvestorProfileUpdate,
+    ProfileUpdate,
 )
-from backend.services.auth import get_current_user, CurrentUser
+from backend.services.auth import CurrentUser, get_current_user
 from backend.services.supabase import get_anon_client
 
 router = APIRouter(prefix="/profile", tags=["profile"])

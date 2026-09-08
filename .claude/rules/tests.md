@@ -1,9 +1,11 @@
 # Test Rules (applies to **/test_*.py, **/*_test.py)
 
 ## Framework
-- pytest with async support (pytest-asyncio)
-- `conftest.py` at each test directory level for shared fixtures
-- Tests run with `pytest tests/ -v --asyncio-mode=auto`
+- pytest with async support (pytest-asyncio); config lives in pyproject.toml
+  (testpaths + asyncio_mode=auto), so a bare `pytest` runs the suite
+- `tests/conftest.py` injects fake env config so the suite runs from a fresh
+  clone and can never touch real credentials
+- Frontend: vitest (jsdom) for the API client and SSE hook — `npm test`
 
 ## External API Mocking
 - Mock ALL external APIs — never call real Supabase, Finnhub, Polymarket, FRED, EDGAR, or SnapTrade in tests
@@ -12,7 +14,7 @@
 - Include both success responses and each of the 4 error categories in mock fixtures
 
 ## Coverage Requirements
-- Every test file must test both the success path AND all 4 error categories:
+- Tool test files must test both the success path AND all 4 error categories:
   - transient (API timeout, 429 rate limit)
   - validation (bad input, invalid ticker)
   - business (valid request, no results — e.g., no Polymarket markets found)

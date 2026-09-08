@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
+import { LightweightCharts, loadLightweightCharts } from '../lib/charts';
+import { formatCurrency, formatPercent, formatCompactNumber } from '../lib/format';
 import { Loader2 } from 'lucide-react';
 
 interface PriceChartProps {
@@ -34,36 +36,8 @@ interface CrosshairData {
 const TIMEFRAMES = ['1D', '1W', '1M', '3M', '6M', '1Y', '5Y'];
 const INTRADAY_TIMEFRAMES = ['1D', '1W'];
 
-// Load Lightweight Charts from CDN once
-let lwcPromise: Promise<any> | null = null;
-
-function loadLightweightCharts(): Promise<any> {
-  if (lwcPromise) return lwcPromise;
-
-  lwcPromise = new Promise((resolve, reject) => {
-    if ((window as any).LightweightCharts) {
-      resolve((window as any).LightweightCharts);
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js';
-    script.async = true;
-    script.onload = () => resolve((window as any).LightweightCharts);
-    script.onerror = () => reject(new Error('Failed to load Lightweight Charts'));
-    document.head.appendChild(script);
-  });
-
-  return lwcPromise;
-}
-
-function formatVolume(vol: number): string {
-  if (vol >= 1_000_000_000) return (vol / 1_000_000_000).toFixed(1) + 'B';
-  if (vol >= 1_000_000) return (vol / 1_000_000).toFixed(1) + 'M';
-  if (vol >= 1_000) return (vol / 1_000).toFixed(1) + 'K';
-  return vol.toFixed(0);
-}
-
+// Bare price (no currency symbol) for the compact OHLC legend, where the
+// surrounding UI deliberately omits the "$" prefix.
 function formatPrice(price: number): string {
   return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -153,8 +127,7 @@ export default function PriceChart({
   useEffect(() => {
     if (!lwcLoaded || !chartContainerRef.current) return;
 
-    const LWC = (window as any).LightweightCharts;
-    if (!LWC) return;
+    const LWC = LightweightCharts;
 
     // Destroy previous chart
     if (chartRef.current) {
@@ -170,7 +143,7 @@ export default function PriceChart({
       width: chartContainerRef.current.clientWidth,
       height: height,
       layout: {
-        background: { type: 'solid', color: 'transparent' },
+        background: { type: LightweightCharts.ColorType.Solid, color: 'transparent' },
         textColor: textColor,
         fontFamily: "'DM Sans', system-ui, sans-serif",
         fontSize: 11,
@@ -331,7 +304,7 @@ export default function PriceChart({
 
     api.getResearchChart(ticker, timeframe).then((res) => {
       if (res.status === 'ok' && Array.isArray(res.data) && res.data.length > 0) {
-        const points: OHLCVPoint[] = res.data;
+        const points = res.data as OHLCVPoint[];
         rawDataRef.current = points;
 
         // Prepare time values based on timeframe
@@ -415,14 +388,14 @@ export default function PriceChart({
             position: 'aboveBar',
             color: greenColor,
             shape: 'arrowDown',
-            text: `H $${formatPrice(points[highIdx].high)}`,
+            text: `H ${formatCurrency(points[highIdx].high)}`,
           });
           markers.push({
             time: toTime(points[lowIdx]),
             position: 'belowBar',
             color: redColor,
             shape: 'arrowUp',
-            text: `L $${formatPrice(points[lowIdx].low)}`,
+            text: `L ${formatCurrency(points[lowIdx].low)}`,
           });
 
           // Sort markers by time (required by LWC)
@@ -499,11 +472,11 @@ export default function PriceChart({
               C <span style={{ color: isDark ? '#E5E5E7' : '#1A1A1D' }}>{formatPrice(crosshair.close)}</span>
             </span>
             <span className="text-[10px]" style={{ color: textMuted }}>
-              Vol <span style={{ color: isDark ? '#E5E5E7' : '#1A1A1D' }}>{formatVolume(crosshair.volume)}</span>
+              Vol <span style={{ color: isDark ? '#E5E5E7' : '#1A1A1D' }}>{formatCompactNumber(crosshair.volume)}</span>
             </span>
             {crosshair.change !== null && (
               <span className="text-[10px]" style={{ color: crosshair.change >= 0 ? greenColor : redColor }}>
-                {crosshair.change >= 0 ? '+' : ''}{crosshair.change.toFixed(2)}%
+                {formatPercent(crosshair.change, { signed: true })}
               </span>
             )}
           </>
@@ -516,7 +489,7 @@ export default function PriceChart({
       <div className="flex items-center justify-between mb-2">
         <div className="flex gap-1">
           {TIMEFRAMES.map((tf) => (
-            <button key={tf} onClick={() => setTimeframe(tf)}
+            <button key={tf} onClick={() => setTimeframe(tf)} aria-pressed={timeframe === tf}
               className="text-[10px] font-body px-2.5 py-1 rounded-md transition-colors"
               style={{
                 background: timeframe === tf ? `${gold}15` : 'transparent',
@@ -531,6 +504,7 @@ export default function PriceChart({
           {/* SMA toggles */}
           <button
             onClick={() => setShowSMA20((v) => !v)}
+            aria-pressed={showSMA20}
             className="text-[9px] font-body px-2 py-0.5 rounded transition-colors"
             style={{
               background: showSMA20 ? `${sma20Color}20` : 'transparent',
@@ -542,6 +516,7 @@ export default function PriceChart({
           </button>
           <button
             onClick={() => setShowSMA50((v) => !v)}
+            aria-pressed={showSMA50}
             className="text-[9px] font-body px-2 py-0.5 rounded transition-colors"
             style={{
               background: showSMA50 ? `${sma50Color}20` : 'transparent',
@@ -561,6 +536,7 @@ export default function PriceChart({
               color: textMuted,
             }}
             title={activeChartType === 'area' ? 'Switch to candlestick' : 'Switch to area'}
+            aria-label={activeChartType === 'area' ? 'Switch to candlestick chart' : 'Switch to area chart'}
           >
             {activeChartType === 'candlestick' ? '\u{1F56F}\uFE0F' : '\uD83D\uDCC8'}
           </button>
@@ -576,21 +552,21 @@ export default function PriceChart({
           <span className="text-[10px]" style={{ color: textMuted }}>
             Price{' '}
             <span style={{ color: isDark ? '#E5E5E7' : '#1A1A1D', fontWeight: 600 }}>
-              ${formatPrice(stats.currentPrice)}
+              {formatCurrency(stats.currentPrice)}
             </span>
           </span>
           <span className="text-[10px]" style={{ color: stats.dayChange >= 0 ? greenColor : redColor }}>
-            {stats.dayChange >= 0 ? '+' : ''}{formatPrice(stats.dayChange)} ({stats.dayChange >= 0 ? '+' : ''}{stats.dayChangePct.toFixed(2)}%)
+            {stats.dayChange >= 0 ? '+' : ''}{formatPrice(stats.dayChange)} ({formatPercent(stats.dayChangePct, { signed: true })})
           </span>
           <span className="text-[10px]" style={{ color: textMuted }}>
-            Hi <span style={{ color: greenColor }}>${formatPrice(stats.periodHigh)}</span>
+            Hi <span style={{ color: greenColor }}>{formatCurrency(stats.periodHigh)}</span>
           </span>
           <span className="text-[10px]" style={{ color: textMuted }}>
-            Lo <span style={{ color: redColor }}>${formatPrice(stats.periodLow)}</span>
+            Lo <span style={{ color: redColor }}>{formatCurrency(stats.periodLow)}</span>
           </span>
           {stats.avgVolume > 0 && (
             <span className="text-[10px]" style={{ color: textMuted }}>
-              Avg Vol <span style={{ color: isDark ? '#E5E5E7' : '#1A1A1D' }}>{formatVolume(stats.avgVolume)}</span>
+              Avg Vol <span style={{ color: isDark ? '#E5E5E7' : '#1A1A1D' }}>{formatCompactNumber(stats.avgVolume)}</span>
             </span>
           )}
         </div>
@@ -611,7 +587,7 @@ export default function PriceChart({
           </div>
         )}
 
-        <div ref={chartContainerRef} style={{ minHeight: height }} />
+        <div ref={chartContainerRef} role="img" aria-label={`${ticker} price chart`} style={{ minHeight: height }} />
       </div>
     </div>
   );

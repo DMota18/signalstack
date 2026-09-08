@@ -4,12 +4,19 @@ Loads environment variables and provides typed settings.
 All secrets come from .env — never hardcoded.
 """
 
-from pydantic_settings import BaseSettings
 from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
 
     # --- Supabase ---
     supabase_url: str
@@ -39,12 +46,27 @@ class Settings(BaseSettings):
     # Fear & Greed: no key needed (free endpoint)
 
     # --- App ---
-    app_name: str = "Zelador Analytics"
+    app_name: str = "SignalStack"
     app_env: str = "development"       # development | staging | production
     debug: bool = True
     api_version: str = "v1"
     # Comma-separated list of allowed CORS origins for production
     cors_origins: str = ""
+    # Public hostname of the deployed app (e.g. signalstack.example.com).
+    # Shared with Caddy via the same DOMAIN env var; drives email links,
+    # referral links, SEO/OG URLs, OAuth redirects, and the CORS fallback.
+    domain: str = ""
+
+    @property
+    def app_base_url(self) -> str:
+        """Public origin of the deployed app — never hardcode a domain."""
+        if self.domain:
+            return f"https://{self.domain}"
+        if self.cors_origins:
+            first = self.cors_origins.split(",")[0].strip()
+            if first:
+                return first
+        return "http://localhost:3000"
     # --- Redis ---
     redis_url: str = "redis://localhost:6379/0"
     redis_password: str = ""
@@ -75,7 +97,7 @@ class Settings(BaseSettings):
 
     # --- Email (Resend) ---
     resend_api_key: str = ""
-    email_from: str = "Zelador Analytics <noreply@zeladoranalytics.com>"
+    email_from: str = "SignalStack <noreply@signalstack.app>"
 
     # --- Email (SMTP, legacy fallback) ---
     smtp_host: str = ""
@@ -87,13 +109,8 @@ class Settings(BaseSettings):
     claude_daily_cost_cap_usd: float = 0.50   # Per-user daily spend cap
     claude_fallback_model: str = "claude-haiku-4-5-20251001"
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
 
-
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """Cached settings instance. Call this instead of constructing Settings() directly."""
     return Settings()

@@ -6,9 +6,11 @@ Phase 1: stores/deletes subscriptions. Phase 2: sends via VAPID/FCM.
 """
 
 import logging
+
 from fastapi import APIRouter, Depends, Request
+
 from backend.models.schemas import APIResponse
-from backend.services.auth import get_current_user, CurrentUser
+from backend.services.auth import CurrentUser, get_current_user
 from backend.services.supabase import get_anon_client
 
 logger = logging.getLogger("push_subscriptions")

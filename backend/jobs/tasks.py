@@ -22,10 +22,12 @@ Session state rule (Domain 1.6):
 
 import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from backend.jobs.celery_app import celery_app
-from backend.services.supabase import get_service_client
 from backend.jobs.tracker import JobTracker
+from backend.services.supabase import get_service_client
 
 logger = logging.getLogger("tasks")
 
@@ -40,6 +42,28 @@ def run_async(coro):
         loop.close()
 
 
+async def _start_or_resume(tracker: JobTracker, run_id: str | None) -> None:
+    """Start a fresh job_runs row, or re-attach to the one a previous
+    retry attempt created."""
+    if run_id:
+        tracker.resume(run_id)
+    else:
+        await tracker.start()
+
+
+async def _retry_or_fail(task, tracker: JobTracker, exc: Exception, task_kwargs: dict):
+    """Retry a failed per-user task, reusing the same job_runs row.
+
+    The row is marked failed only once retries are exhausted —
+    intermediate attempts pass their run_id forward instead of leaving
+    a trail of permanently-'failed' rows for a job that may yet succeed.
+    """
+    if task.request.retries >= task.max_retries:
+        await tracker.fail(str(exc), "transient")
+        raise exc
+    raise task.retry(exc=exc, kwargs={**task_kwargs, "run_id": tracker.run_id})
+
+
 # ============================================================================
 # DAILY DIGEST
 # ============================================================================
@@ -47,7 +71,7 @@ def run_async(coro):
 @celery_app.task(name="backend.jobs.tasks.run_daily_digest_scan")
 def run_daily_digest_scan():
     """Scan for users who should receive their daily digest NOW.
-    
+
     Runs every hour from 4-10 PM UTC. Checks each user's timezone
     to see if it's their preferred delivery hour (default: 5 PM local).
     Only selects pro and premium users (free tier gets email-only digest
@@ -70,7 +94,7 @@ async def _daily_digest_scan():
         logger.error(f"Daily digest scan failed: {result}")
         return
 
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     dispatched = 0
 
     for user in result["data"]:
@@ -95,30 +119,27 @@ async def _daily_digest_scan():
     max_retries=2,
     default_retry_delay=300,  # 5 min between retries
 )
-def run_user_digest(self, user_id: str):
+def run_user_digest(self, user_id: str, run_id: str | None = None):
     """Generate and deliver the daily digest for a single user.
-    
+
     Pipeline (Domain 1.5 — fixed sequential):
       1. Build fresh UserContext (never resume stale session)
-      2. Run all 5 signal agents in parallel
-      3. Coordinator synthesizes
+      2. Run all six subagents sequentially (rate-limit friendly)
+      3. Coordinator synthesizes; compliance interception runs in the pipeline
       4. Format per delivery channel
-      5. Send (push + in-app, email for pro; all for premium)
-    
-    This is a stub — the actual intelligence pipeline is built in Phase 1.
-    The structure is here so the scheduling infrastructure is complete.
+      5. Send (in-app always; push and email per user preferences)
     """
-    run_async(_user_digest(self, user_id))
+    run_async(_user_digest(self, user_id, run_id))
 
 
-async def _user_digest(task, user_id: str):
+async def _user_digest(task, user_id: str, run_id: str | None = None):
     tracker = JobTracker(user_id, "daily_digest")
-    await tracker.start()
+    await _start_or_resume(tracker, run_id)
 
     try:
-        from backend.services.pipeline import generate_intelligence, format_for_push, format_for_email
+        from backend.services.email import build_digest_email_html, send_email_to_user
+        from backend.services.pipeline import format_for_push, generate_intelligence
         from backend.services.push import send_push_to_user
-        from backend.services.email import send_email_to_user, build_digest_email_html
 
         result = await generate_intelligence(
             user_id=user_id,
@@ -168,11 +189,11 @@ async def _user_digest(task, user_id: str):
         )
 
         # Update alert with actual delivery channels
-        channels_sent = {"in_app": {"created_at": datetime.now(timezone.utc).isoformat()}}
+        channels_sent = {"in_app": {"created_at": datetime.now(UTC).isoformat()}}
         if push_result.get("sent", 0) > 0:
-            channels_sent["push"] = {"created_at": datetime.now(timezone.utc).isoformat(), "devices": push_result["sent"]}
+            channels_sent["push"] = {"created_at": datetime.now(UTC).isoformat(), "devices": push_result["sent"]}
         if email_result.get("sent"):
-            channels_sent["email"] = {"created_at": datetime.now(timezone.utc).isoformat()}
+            channels_sent["email"] = {"created_at": datetime.now(UTC).isoformat()}
 
         if result.get("alert_id"):
             await db.update(
@@ -184,6 +205,7 @@ async def _user_digest(task, user_id: str):
         await tracker.complete(
             alert_id=result.get("alert_id"),
             tokens_used=result.get("tokens_used"),
+            cost_usd=result.get("cost_usd"),
         )
 
         logger.info(
@@ -196,8 +218,7 @@ async def _user_digest(task, user_id: str):
 
     except Exception as e:
         logger.error(f"Daily digest failed for {user_id}: {e}")
-        await tracker.fail(str(e), "transient")
-        raise task.retry(exc=e)
+        await _retry_or_fail(task, tracker, e, {"user_id": user_id})
 
 
 # ============================================================================
@@ -223,7 +244,7 @@ async def _weekly_report_scan():
         logger.error(f"Weekly report scan failed: {result}")
         return
 
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     dispatched = 0
 
     for user in result["data"]:
@@ -245,27 +266,27 @@ async def _weekly_report_scan():
     max_retries=2,
     default_retry_delay=300,
 )
-def run_user_weekly_report(self, user_id: str):
+def run_user_weekly_report(self, user_id: str, run_id: str | None = None):
     """Generate and deliver the weekly portfolio intelligence report for a user.
 
     Pipeline (same as daily digest with weekly framing):
       1. Build fresh UserContext (never resume stale session)
-      2. Run all 5 signal agents in parallel
+      2. Run all six subagents sequentially
       3. Coordinator synthesizes with weekly context
       4. Format per delivery channel (weekly email template)
       5. Send (push + in-app + email for pro/premium)
     """
-    run_async(_user_weekly_report(self, user_id))
+    run_async(_user_weekly_report(self, user_id, run_id))
 
 
-async def _user_weekly_report(task, user_id: str):
+async def _user_weekly_report(task, user_id: str, run_id: str | None = None):
     tracker = JobTracker(user_id, "weekly_report")
-    await tracker.start()
+    await _start_or_resume(tracker, run_id)
 
     try:
-        from backend.services.pipeline import generate_intelligence, format_for_push
+        from backend.services.email import build_weekly_email_html, send_email_to_user
+        from backend.services.pipeline import format_for_push, generate_intelligence
         from backend.services.push import send_push_to_user
-        from backend.services.email import send_email_to_user, build_weekly_email_html
 
         result = await generate_intelligence(
             user_id=user_id,
@@ -316,11 +337,11 @@ async def _user_weekly_report(task, user_id: str):
         )
 
         # Update alert with actual delivery channels
-        channels_sent = {"in_app": {"created_at": datetime.now(timezone.utc).isoformat()}}
+        channels_sent = {"in_app": {"created_at": datetime.now(UTC).isoformat()}}
         if push_result.get("sent", 0) > 0:
-            channels_sent["push"] = {"created_at": datetime.now(timezone.utc).isoformat(), "devices": push_result["sent"]}
+            channels_sent["push"] = {"created_at": datetime.now(UTC).isoformat(), "devices": push_result["sent"]}
         if email_result.get("sent"):
-            channels_sent["email"] = {"created_at": datetime.now(timezone.utc).isoformat()}
+            channels_sent["email"] = {"created_at": datetime.now(UTC).isoformat()}
 
         if result.get("alert_id"):
             await db.update(
@@ -332,6 +353,7 @@ async def _user_weekly_report(task, user_id: str):
         await tracker.complete(
             alert_id=result.get("alert_id"),
             tokens_used=result.get("tokens_used"),
+            cost_usd=result.get("cost_usd"),
         )
 
         logger.info(
@@ -344,8 +366,7 @@ async def _user_weekly_report(task, user_id: str):
 
     except Exception as e:
         logger.error(f"Weekly report failed for {user_id}: {e}")
-        await tracker.fail(str(e), "transient")
-        raise task.retry(exc=e)
+        await _retry_or_fail(task, tracker, e, {"user_id": user_id})
 
 
 # ============================================================================
@@ -386,19 +407,19 @@ async def _portfolio_sync_scan():
     max_retries=3,
     default_retry_delay=60,
 )
-def sync_user_portfolio(self, user_id: str, connection_id: str):
+def sync_user_portfolio(self, user_id: str, connection_id: str, run_id: str | None = None):
     """Sync a single user's portfolio from SnapTrade.
 
     Fetches accounts + holdings via SnapTrade API, upserts into
     SignalStack's portfolios and holdings tables, then removes
     any stale holdings no longer present in the brokerage.
     """
-    run_async(_sync_user_portfolio(self, user_id, connection_id))
+    run_async(_sync_user_portfolio(self, user_id, connection_id, run_id))
 
 
-async def _sync_user_portfolio(task, user_id: str, connection_id: str):
+async def _sync_user_portfolio(task, user_id: str, connection_id: str, run_id: str | None = None):
     tracker = JobTracker(user_id, "portfolio_sync")
-    await tracker.start()
+    await _start_or_resume(tracker, run_id)
 
     try:
         from backend.services.snaptrade import sync_user_holdings
@@ -425,11 +446,12 @@ async def _sync_user_portfolio(task, user_id: str, connection_id: str):
             await tracker.complete()
 
         # Remove stale holdings — positions the user no longer holds.
-        # After sync, any holding for this user whose synced_at is older
-        # than the current sync timestamp was NOT refreshed, meaning
-        # the brokerage no longer reports it.
+        # Scoped to portfolios that synced successfully in this run:
+        # a failed account's holdings must never be deleted as "sold".
         if sync_result["holdings_synced"] > 0:
-            stale_deleted = await _cleanup_stale_holdings(user_id)
+            stale_deleted = await _cleanup_stale_holdings(
+                user_id, sync_result.get("synced_portfolio_ids", []),
+            )
             if stale_deleted > 0:
                 logger.info(f"Portfolio sync for {user_id}: removed {stale_deleted} stale holdings")
 
@@ -441,8 +463,7 @@ async def _sync_user_portfolio(task, user_id: str, connection_id: str):
 
     except Exception as e:
         logger.error(f"Portfolio sync failed for {user_id}: {e}")
-        await tracker.fail(str(e), "transient")
-        raise task.retry(exc=e)
+        await _retry_or_fail(task, tracker, e, {"user_id": user_id, "connection_id": connection_id})
 
 
 # ============================================================================
@@ -481,8 +502,8 @@ async def _refresh_earnings_calendar():
     # so one call gets all upcoming earnings. We then filter to our tickers.
     from backend.tools.finnhub import _finnhub_request
 
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    future = (datetime.now(timezone.utc) + timedelta(days=60)).strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    future = (datetime.now(UTC) + timedelta(days=60)).strftime("%Y-%m-%d")
 
     api_result = await _finnhub_request(
         "/calendar/earnings",
@@ -560,8 +581,8 @@ async def _pre_earnings_scan():
     # PostgREST filters go into query params via a dict, so we can't use
     # two "report_date" keys. Fetch all unbriefed entries and filter in Python
     # (the earnings_calendar table is small — dozens of rows at most).
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    cutoff = (datetime.now(timezone.utc) + timedelta(days=5)).strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    cutoff = (datetime.now(UTC) + timedelta(days=5)).strftime("%Y-%m-%d")
 
     earnings_result = await db.select(
         table="earnings_calendar",
@@ -626,7 +647,7 @@ async def _pre_earnings_scan():
     max_retries=2,
     default_retry_delay=300,
 )
-def run_user_earnings_briefing(self, user_id: str, tickers: list[str], earnings_meta: dict = None):
+def run_user_earnings_briefing(self, user_id: str, tickers: list[str], earnings_meta: dict = None, run_id: str | None = None):
     """Generate pre-earnings intelligence briefing for specific tickers.
 
     Runs the intelligence pipeline scoped to tickers with upcoming earnings,
@@ -638,17 +659,17 @@ def run_user_earnings_briefing(self, user_id: str, tickers: list[str], earnings_
         tickers: List of tickers with upcoming earnings
         earnings_meta: Dict of ticker -> {report_date, report_time, consensus_eps, consensus_revenue}
     """
-    run_async(_user_earnings_briefing(self, user_id, tickers, earnings_meta or {}))
+    run_async(_user_earnings_briefing(self, user_id, tickers, earnings_meta or {}, run_id))
 
 
-async def _user_earnings_briefing(task, user_id: str, tickers: list[str], earnings_meta: dict):
+async def _user_earnings_briefing(task, user_id: str, tickers: list[str], earnings_meta: dict, run_id: str | None = None):
     tracker = JobTracker(user_id, "earnings_briefing")
-    await tracker.start()
+    await _start_or_resume(tracker, run_id)
 
     try:
-        from backend.services.pipeline import generate_intelligence, format_for_push
+        from backend.services.email import build_earnings_briefing_email_html, send_email_to_user
+        from backend.services.pipeline import generate_intelligence
         from backend.services.push import send_push_to_user
-        from backend.services.email import send_email_to_user, build_earnings_briefing_email_html
 
         result = await generate_intelligence(
             user_id=user_id,
@@ -716,11 +737,11 @@ async def _user_earnings_briefing(task, user_id: str, tickers: list[str], earnin
         )
 
         # Update alert with delivery channels
-        channels_sent = {"in_app": {"created_at": datetime.now(timezone.utc).isoformat()}}
+        channels_sent = {"in_app": {"created_at": datetime.now(UTC).isoformat()}}
         if push_result.get("sent", 0) > 0:
-            channels_sent["push"] = {"created_at": datetime.now(timezone.utc).isoformat(), "devices": push_result["sent"]}
+            channels_sent["push"] = {"created_at": datetime.now(UTC).isoformat(), "devices": push_result["sent"]}
         if email_result.get("sent"):
-            channels_sent["email"] = {"created_at": datetime.now(timezone.utc).isoformat()}
+            channels_sent["email"] = {"created_at": datetime.now(UTC).isoformat()}
 
         if result.get("alert_id"):
             await db.update(
@@ -743,6 +764,7 @@ async def _user_earnings_briefing(task, user_id: str, tickers: list[str], earnin
         await tracker.complete(
             alert_id=result.get("alert_id"),
             tokens_used=result.get("tokens_used"),
+            cost_usd=result.get("cost_usd"),
         )
 
         logger.info(
@@ -754,8 +776,9 @@ async def _user_earnings_briefing(task, user_id: str, tickers: list[str], earnin
 
     except Exception as e:
         logger.error(f"Earnings briefing failed for {user_id}: {e}")
-        await tracker.fail(str(e), "transient")
-        raise task.retry(exc=e)
+        await _retry_or_fail(task, tracker, e, {
+            "user_id": user_id, "tickers": tickers, "earnings_meta": earnings_meta,
+        })
 
 
 # ============================================================================
@@ -765,14 +788,14 @@ async def _user_earnings_briefing(task, user_id: str, tickers: list[str], earnin
 @celery_app.task(name="backend.jobs.tasks.run_price_monitor")
 def run_price_monitor():
     """Check for significant price movements (>3%) across all tracked tickers.
-    
+
     Runs every 5 minutes during market hours. When a move is detected,
     dispatches a "why is this moving?" alert for affected users.
-    
+
     Dynamic decomposition (Domain 1.5): The coordinator determines which
     signal dimensions are relevant to the move, spawns only those subagents,
     synthesizes, and sends the alert if the threshold is met.
-    
+
     Stub — implemented in Phase 2.
     """
     run_async(_price_monitor())
@@ -789,12 +812,13 @@ async def _price_monitor():
     5. Mark triggered alerts (update triggered_at) to avoid re-firing
     """
     import asyncio as _asyncio
+
     from backend.tools.finnhub import get_price_data
 
     db = get_service_client()
 
     # 1. Get all enabled price alerts that haven't been triggered today
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
     alerts_result = await db.select(
         table="price_alerts",
         columns="id,user_id,ticker,threshold_pct,direction,enabled,triggered_at",
@@ -840,7 +864,7 @@ async def _price_monitor():
             return_exceptions=True,
         )
 
-        for ticker, result in zip(batch, results):
+        for ticker, result in zip(batch, results, strict=True):
             if isinstance(result, Exception):
                 logger.warning(f"Price monitor: failed to fetch {ticker}: {result}")
                 continue
@@ -913,7 +937,7 @@ async def _price_monitor():
     logger.info(f"Price monitor: dispatched {dispatched} user alert tasks")
 
     # 5. Mark triggered alerts (update triggered_at)
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = datetime.now(UTC).isoformat()
     for t in triggered:
         await db.update(
             table="price_alerts",
@@ -932,7 +956,7 @@ async def _price_monitor():
     max_retries=1,
     default_retry_delay=120,
 )
-def run_user_price_alert(self, user_id: str, tickers: list[str], trigger_data: dict):
+def run_user_price_alert(self, user_id: str, tickers: list[str], trigger_data: dict, run_id: str | None = None):
     """Generate "why is this moving?" intelligence for price-triggered tickers.
 
     Dispatched by the price monitor when one or more of a user's alerts fire.
@@ -944,17 +968,17 @@ def run_user_price_alert(self, user_id: str, tickers: list[str], trigger_data: d
         tickers: List of tickers that triggered
         trigger_data: Dict of ticker -> {actual_change_pct, threshold_pct, direction, current_price}
     """
-    run_async(_user_price_alert(self, user_id, tickers, trigger_data))
+    run_async(_user_price_alert(self, user_id, tickers, trigger_data, run_id))
 
 
-async def _user_price_alert(task, user_id: str, tickers: list[str], trigger_data: dict):
+async def _user_price_alert(task, user_id: str, tickers: list[str], trigger_data: dict, run_id: str | None = None):
     tracker = JobTracker(user_id, "price_alert")
-    await tracker.start()
+    await _start_or_resume(tracker, run_id)
 
     try:
-        from backend.services.pipeline import generate_intelligence, format_for_push
+        from backend.services.email import build_price_alert_email_html, send_email_to_user
+        from backend.services.pipeline import generate_intelligence
         from backend.services.push import send_push_to_user
-        from backend.services.email import send_email_to_user, build_price_alert_email_html
 
         result = await generate_intelligence(
             user_id=user_id,
@@ -1025,11 +1049,11 @@ async def _user_price_alert(task, user_id: str, tickers: list[str], trigger_data
         )
 
         # Update alert with delivery channels
-        channels_sent = {"in_app": {"created_at": datetime.now(timezone.utc).isoformat()}}
+        channels_sent = {"in_app": {"created_at": datetime.now(UTC).isoformat()}}
         if push_result.get("sent", 0) > 0:
-            channels_sent["push"] = {"created_at": datetime.now(timezone.utc).isoformat(), "devices": push_result["sent"]}
+            channels_sent["push"] = {"created_at": datetime.now(UTC).isoformat(), "devices": push_result["sent"]}
         if email_result.get("sent"):
-            channels_sent["email"] = {"created_at": datetime.now(timezone.utc).isoformat()}
+            channels_sent["email"] = {"created_at": datetime.now(UTC).isoformat()}
 
         if result.get("alert_id"):
             await db.update(
@@ -1041,6 +1065,7 @@ async def _user_price_alert(task, user_id: str, tickers: list[str], trigger_data
         await tracker.complete(
             alert_id=result.get("alert_id"),
             tokens_used=result.get("tokens_used"),
+            cost_usd=result.get("cost_usd"),
         )
 
         logger.info(
@@ -1052,8 +1077,9 @@ async def _user_price_alert(task, user_id: str, tickers: list[str], trigger_data
 
     except Exception as e:
         logger.error(f"Price alert failed for {user_id}: {e}")
-        await tracker.fail(str(e), "transient")
-        raise task.retry(exc=e)
+        await _retry_or_fail(task, tracker, e, {
+            "user_id": user_id, "tickers": tickers, "trigger_data": trigger_data,
+        })
 
 
 # ============================================================================
@@ -1089,7 +1115,7 @@ def cleanup_polymarket_cache():
 async def _cleanup_polymarket_cache():
     db = get_service_client()
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     result = await db.delete(
         table="polymarket_cache",
         filters={"expires_at": f"lt.{now}"},
@@ -1108,50 +1134,46 @@ async def _cleanup_polymarket_cache():
 # ============================================================================
 
 def _is_delivery_hour(now_utc: datetime, user_tz: str, target_hour: int) -> bool:
-    """Check if the current UTC time corresponds to target_hour in the user's timezone.
-    
-    Uses a simple offset lookup rather than pytz/zoneinfo to keep the
-    dependency light. Covers the major US + international timezones.
-    For production, swap to zoneinfo (Python 3.9+).
+    """Check if the current UTC time corresponds to target_hour in the
+    user's IANA timezone, DST-aware via stdlib zoneinfo.
+
+    Unknown timezone names fall back to America/New_York.
     """
-    # Common timezone offsets from UTC (in hours)
-    # Negative = behind UTC, positive = ahead
-    tz_offsets = {
-        "America/New_York": -4, "America/Chicago": -5,
-        "America/Denver": -6, "America/Los_Angeles": -7,
-        "America/Phoenix": -7, "America/Anchorage": -8,
-        "Pacific/Honolulu": -10, "Europe/London": 1,
-        "Europe/Paris": 2, "Europe/Berlin": 2,
-        "Asia/Tokyo": 9, "Asia/Shanghai": 8,
-        "Asia/Kolkata": 5, "Australia/Sydney": 10,
-        "UTC": 0,
-    }
+    try:
+        zone = ZoneInfo(user_tz)
+    except (ZoneInfoNotFoundError, ValueError):
+        logger.warning(f"Unknown timezone '{user_tz}', defaulting to America/New_York")
+        zone = ZoneInfo("America/New_York")
 
-    offset = tz_offsets.get(user_tz, -4)  # Default to ET
-    user_hour = (now_utc.hour + offset) % 24
-    return user_hour == target_hour
+    return now_utc.astimezone(zone).hour == target_hour
 
 
-async def _cleanup_stale_holdings(user_id: str) -> int:
+async def _cleanup_stale_holdings(user_id: str, synced_portfolio_ids: list[str]) -> int:
     """Remove holdings that are no longer reported by the brokerage.
 
-    After a sync, any holding whose synced_at is more than 2 hours old
-    was NOT refreshed in the latest sync — meaning the user sold the
-    position or it was removed from the brokerage.
+    Scoped to portfolios that were SUCCESSFULLY synced in this run: a
+    holding there with an old synced_at was not refreshed, meaning the
+    position was sold or removed. Portfolios whose sync failed are left
+    untouched — otherwise one brokerage erroring while another succeeds
+    would delete the failed account's entire position list as "sold".
 
     We use a 2-hour window (not exact timestamp matching) to handle
     cases where a sync partially fails and retries.
 
     Returns the count of deleted holdings.
     """
+    if not synced_portfolio_ids:
+        return 0
+
     db = get_service_client()
 
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+    cutoff = (datetime.now(UTC) - timedelta(hours=2)).isoformat()
 
     result = await db.delete(
         table="holdings",
         filters={
             "user_id": f"eq.{user_id}",
+            "portfolio_id": f"in.({','.join(synced_portfolio_ids)})",
             "synced_at": f"lt.{cutoff}",
         },
     )
@@ -1164,7 +1186,7 @@ async def _cleanup_stale_holdings(user_id: str) -> int:
 async def _digest_sent_today(user_id: str, alert_type: str) -> bool:
     """Check if a digest/report of the given type was already sent today."""
     db = get_service_client()
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
 
     result = await db.select(
         table="alert_history",

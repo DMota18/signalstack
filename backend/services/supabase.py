@@ -13,14 +13,15 @@ library — this matches the existing pattern from the Orchestrator bot (direct
 httpx REST calls, not the supabase-py client).
 """
 
+
 import httpx
-from typing import Optional, Any
+
 from backend.config import get_settings
 
 
 class SupabaseClient:
     """Lightweight Supabase REST client using httpx.
-    
+
     Matches the existing Orchestrator pattern: direct REST calls
     with httpx rather than the supabase-py client library.
     """
@@ -38,7 +39,7 @@ class SupabaseClient:
             "Prefer": "return=representation",
         }
 
-    def _headers(self, user_jwt: Optional[str] = None) -> dict:
+    def _headers(self, user_jwt: str | None = None) -> dict:
         """Build request headers. If user_jwt is provided, use it for auth
         (respects RLS). Otherwise use the key from __init__."""
         headers = self._default_headers.copy()
@@ -93,14 +94,14 @@ class SupabaseClient:
         self,
         table: str,
         columns: str = "*",
-        filters: Optional[dict] = None,
-        user_jwt: Optional[str] = None,
+        filters: dict | None = None,
+        user_jwt: str | None = None,
         single: bool = False,
-        order: Optional[str] = None,
-        limit: Optional[int] = None,
+        order: str | None = None,
+        limit: int | None = None,
     ) -> dict:
         """SELECT from a table. Filters use PostgREST syntax.
-        
+
         Args:
             table: Table name
             columns: Comma-separated column list or "*"
@@ -134,12 +135,12 @@ class SupabaseClient:
         self,
         table: str,
         data: dict | list,
-        user_jwt: Optional[str] = None,
+        user_jwt: str | None = None,
         upsert: bool = False,
-        on_conflict: Optional[str] = None,
+        on_conflict: str | None = None,
     ) -> dict:
         """INSERT into a table. Supports upsert via on_conflict.
-        
+
         Args:
             table: Table name
             data: Row dict or list of row dicts
@@ -152,7 +153,7 @@ class SupabaseClient:
             resolution = "merge-duplicates"
             headers["Prefer"] = f"resolution={resolution},return=representation"
             if on_conflict:
-                headers["Prefer"] += f""  # on_conflict goes in params
+                headers["Prefer"] += ""  # on_conflict goes in params
 
         params = {}
         if upsert and on_conflict:
@@ -172,7 +173,7 @@ class SupabaseClient:
         table: str,
         data: dict,
         filters: dict,
-        user_jwt: Optional[str] = None,
+        user_jwt: str | None = None,
     ) -> dict:
         """UPDATE rows matching filters."""
         headers = self._headers(user_jwt)
@@ -190,7 +191,7 @@ class SupabaseClient:
         self,
         table: str,
         filters: dict,
-        user_jwt: Optional[str] = None,
+        user_jwt: str | None = None,
     ) -> dict:
         """DELETE rows matching filters."""
         headers = self._headers(user_jwt)
@@ -206,8 +207,8 @@ class SupabaseClient:
     async def rpc(
         self,
         function_name: str,
-        params: Optional[dict] = None,
-        user_jwt: Optional[str] = None,
+        params: dict | None = None,
+        user_jwt: str | None = None,
     ) -> dict:
         """Call a Supabase RPC (database function)."""
         headers = self._headers(user_jwt)
@@ -223,8 +224,8 @@ class SupabaseClient:
 
 # --- Singleton instances ---
 
-_service_client: Optional[SupabaseClient] = None
-_anon_client: Optional[SupabaseClient] = None
+_service_client: SupabaseClient | None = None
+_anon_client: SupabaseClient | None = None
 
 
 def get_service_client() -> SupabaseClient:

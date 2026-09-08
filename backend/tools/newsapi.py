@@ -10,14 +10,18 @@ Tools:
   search_news — Full-text search across 150K+ sources
 """
 
-import httpx
 import logging
-from datetime import datetime, timezone, timedelta
-from backend.tools.base import (
-    ToolResult, transient_error, validation_error,
-    business_error, retry_with_backoff,
-)
+from datetime import UTC, datetime, timedelta
+
+import httpx
+
 from backend.config import get_settings
+from backend.tools.base import (
+    ToolResult,
+    business_error,
+    retry_with_backoff,
+    transient_error,
+)
 
 logger = logging.getLogger("tools.newsapi")
 
@@ -83,7 +87,7 @@ async def search_news(query: str, days_back: int = 7, page_size: int = 15) -> di
     if not settings.newsapi_api_key:
         return business_error(tool_name, "NewsAPI key not configured").to_dict()
 
-    from_date = (datetime.now(timezone.utc) - timedelta(days=days_back)).strftime("%Y-%m-%d")
+    from_date = (datetime.now(UTC) - timedelta(days=days_back)).strftime("%Y-%m-%d")
 
     async def _call():
         async with httpx.AsyncClient(timeout=20.0) as client:

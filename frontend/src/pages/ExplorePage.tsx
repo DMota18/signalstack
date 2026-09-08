@@ -8,6 +8,7 @@ import {
   ChevronRight, Lock, Search, RefreshCw, GitBranch, DollarSign,
   Cpu, RotateCcw, ArrowLeft, X, Crown,
 } from 'lucide-react';
+import { formatCurrency, formatCompactCurrency, formatPercent } from '../lib/format';
 
 const ICON_MAP: Record<string, any> = {
   'sparkles': Sparkles, 'git-branch': GitBranch, 'rotate-ccw': RotateCcw,
@@ -26,43 +27,11 @@ const typeIcons: Record<string, any> = {
   'Momentum': TrendingUp, 'Under the radar': Search, 'Income': DollarSign,
 };
 
-interface Category {
-  key: string;
-  label: string;
-  description: string;
-  icon: string;
-  tier: string;
-  locked: boolean;
-}
-
-interface Idea {
-  ticker: string;
-  name: string;
-  reason: string;
-  type: string;
-  risk_level: string;
-  sector?: string;
-  catalyst?: string;
-  data_points?: {
-    pe_ratio?: number | string | null;
-    market_cap?: string | null;
-    revenue_growth?: string | null;
-    dividend_yield?: string | null;
-    correlation_to_portfolio?: number | null;
-  };
-}
-
-interface DeepDive {
-  ticker: string;
-  bull_case: string;
-  bear_case: string;
-  key_catalysts: string[];
-  key_risks: string[];
-  valuation_context: string;
-  portfolio_fit: string;
-  conviction_level: string;
-  time_horizon: string;
-}
+import type {
+  ExploreCategory as Category,
+  ExploreDeepDive as DeepDive,
+  ExploreIdea as Idea,
+} from '../api/types';
 
 export default function ExplorePage() {
   const { user } = useAuth();
@@ -116,10 +85,11 @@ export default function ExplorePage() {
     // Load cached ideas for this category
     const res = await api.getExploreIdeas(key);
     if (res.status === 'ok' && res.data) {
-      setIdeas(res.data.ideas || []);
+      const ideas = res.data.ideas || [];
+      setIdeas(ideas);
       setCategoryInsight(res.data.category_insight || '');
-      setGeneratedAt(res.data.generated_at);
-      if (res.data.ideas?.length > 0) fetchPrices(res.data.ideas);
+      setGeneratedAt(res.data.generated_at ?? null);
+      if (ideas.length > 0) fetchPrices(ideas);
     }
   };
 
@@ -130,7 +100,7 @@ export default function ExplorePage() {
     if (res.status === 'ok' && res.data) {
       setIdeas(res.data.ideas || []);
       setCategoryInsight(res.data.category_insight || '');
-      setGeneratedAt(res.data.generated_at);
+      setGeneratedAt(res.data.generated_at ?? null);
       fetchPrices(res.data.ideas || []);
     } else if (res.error?.code === 'tier_required') {
       // Show tier gate message — handled in UI
@@ -154,7 +124,9 @@ export default function ExplorePage() {
               market_cap: res.data.fundamentals?.market_cap || null,
             };
           }
-        } catch {}
+        } catch {
+          /* non-fatal: price lookup failed for this idea — leave it out of the price map */
+        }
       })
     );
     setPrices(priceMap);
@@ -291,10 +263,10 @@ export default function ExplorePage() {
           <div className="absolute inset-0 bg-black/60" onClick={() => setDeepDiveOpen(false)} />
           <div className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl p-6"
             style={{ background: isDark ? '#111113' : '#FFFFFF', border: `0.5px solid ${border}` }}>
-            <button onClick={() => setDeepDiveOpen(false)}
+            <button onClick={() => setDeepDiveOpen(false)} aria-label="Close deep dive"
               className="absolute top-4 right-4 p-1.5 rounded-lg hover:opacity-70"
               style={{ color: textMuted }}>
-              <X size={18} />
+              <X size={18} aria-hidden="true" />
             </button>
 
             <div className="flex items-center gap-2 mb-1">
@@ -399,7 +371,7 @@ export default function ExplorePage() {
         <button onClick={() => setActiveCategory(null)}
           className="flex items-center gap-1.5 text-xs font-body mb-3 transition-opacity hover:opacity-70"
           style={{ color: textMuted }}>
-          <ArrowLeft size={14} /> All categories
+          <ArrowLeft size={14} aria-hidden="true" /> All categories
         </button>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -419,9 +391,9 @@ export default function ExplorePage() {
             style={{ background: gold, color: '#0C0C0E' }}
           >
             {generating ? (
-              <><Loader2 size={12} className="animate-spin" /> Generating...</>
+              <><Loader2 size={12} className="animate-spin" aria-hidden="true" /> Generating...</>
             ) : (
-              <><Sparkles size={12} /> {ideas.length > 0 ? 'Regenerate' : 'Generate ideas'}</>
+              <><Sparkles size={12} aria-hidden="true" /> {ideas.length > 0 ? 'Regenerate' : 'Generate ideas'}</>
             )}
           </button>
         </div>
@@ -495,16 +467,14 @@ export default function ExplorePage() {
                     <div className="flex items-center gap-3 mb-3 py-2 px-3 rounded-lg"
                       style={{ background: isDark ? '#0C0C0E' : '#F8F7F4' }}>
                       <span className="text-sm font-numeric font-medium">
-                        ${priceData.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {formatCurrency(priceData.price)}
                       </span>
                       <span className="text-xs font-numeric" style={{ color: isUp ? greenColor : redColor }}>
-                        {isUp ? '+' : ''}{priceData.change_pct.toFixed(2)}%
+                        {formatPercent(priceData.change_pct, { signed: true })}
                       </span>
                       {priceData.market_cap && (
                         <span className="text-[10px] font-body ml-auto" style={{ color: textMuted }}>
-                          {priceData.market_cap >= 1e12 ? `$${(priceData.market_cap / 1e12).toFixed(1)}T`
-                            : priceData.market_cap >= 1e9 ? `$${(priceData.market_cap / 1e9).toFixed(1)}B`
-                            : `$${(priceData.market_cap / 1e6).toFixed(0)}M`}
+                          {formatCompactCurrency(priceData.market_cap)}
                         </span>
                       )}
                     </div>
@@ -558,7 +528,7 @@ export default function ExplorePage() {
                   {/* Bottom row */}
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-body flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: riskColor }} />
+                      <span className="w-1.5 h-1.5 rounded-full" aria-hidden="true" style={{ background: riskColor }} />
                       <span style={{ color: textMuted }}>{idea.risk_level}</span>
                     </span>
                     <div className="flex items-center gap-2">
@@ -566,12 +536,12 @@ export default function ExplorePage() {
                         <button onClick={(e) => { e.stopPropagation(); openDeepDive(idea.ticker); }}
                           className="text-[10px] font-body flex items-center gap-1 px-2 py-0.5 rounded transition-colors hover:opacity-70"
                           style={{ background: isDark ? '#5856D610' : '#4845B508', color: isDark ? '#5856D6' : '#4845B5', border: `0.5px solid ${isDark ? '#5856D620' : '#4845B515'}` }}>
-                          <Sparkles size={9} /> Deep dive
+                          <Sparkles size={9} aria-hidden="true" /> Deep dive
                         </button>
                       )}
                       <button onClick={() => navigate(`/app/research/${idea.ticker}`)}
                         className="text-[10px] font-body flex items-center gap-1" style={{ color: gold }}>
-                        Research <ChevronRight size={10} />
+                        Research <ChevronRight size={10} aria-hidden="true" />
                       </button>
                     </div>
                   </div>

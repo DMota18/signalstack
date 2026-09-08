@@ -1,15 +1,15 @@
 {$DOMAIN::80} {
     # --- Security Headers ---
     header {
-        # Prevent XSS
         X-Content-Type-Options nosniff
         X-Frame-Options DENY
-        X-XSS-Protection "1; mode=block"
         Referrer-Policy strict-origin-when-cross-origin
         # HSTS — tell browsers to always use HTTPS
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        # CSP — restrict resource loading
-        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https://www.google.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co; font-src 'self'; frame-ancestors 'none'"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        # CSP — scripts are bundled and self-hosted (no CDNs); styles
+        # need 'unsafe-inline' for React style attributes plus Google
+        # Fonts; images allow the Google favicon service for ticker logos
+        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.google.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'none'"
         # Remove server identification
         -Server
     }

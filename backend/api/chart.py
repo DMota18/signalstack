@@ -8,13 +8,15 @@ stocks, ETFs, crypto, and international securities.
 Caching: Results are cached in memory for 15 minutes.
 """
 
-import time
 import logging
+import time
+from datetime import datetime
+
 import pandas as pd
-from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, Query
+
 from backend.models.schemas import APIResponse
-from backend.services.auth import get_current_user, CurrentUser
+from backend.services.auth import CurrentUser, get_current_user
 from backend.services.supabase import get_anon_client
 
 logger = logging.getLogger("api.chart")

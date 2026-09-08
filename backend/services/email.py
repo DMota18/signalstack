@@ -10,7 +10,6 @@ this service handles only the transport layer.
 
 import logging
 import re
-from typing import Optional
 
 import resend
 
@@ -20,11 +19,16 @@ from backend.services.supabase import get_service_client
 logger = logging.getLogger("services.email")
 
 
+def _app_url() -> str:
+    """Public origin for links in outbound email — never hardcoded."""
+    return get_settings().app_base_url
+
+
 async def send_email_to_user(
     user_id: str,
     subject: str,
     html_body: str,
-    text_body: Optional[str] = None,
+    text_body: str | None = None,
 ) -> dict:
     """Send an email to a user by looking up their email in profiles.
 
@@ -102,7 +106,7 @@ async def _send_via_smtp(
     user_id: str,
     subject: str,
     html_body: str,
-    text_body: Optional[str] = None,
+    text_body: str | None = None,
 ) -> dict:
     """Legacy SMTP fallback."""
     import smtplib
@@ -247,7 +251,7 @@ def build_digest_email_html(synthesis: dict, user_name: str = "") -> str:
               <tr>
                 <td style="padding:0 0 20px;">
                   <p style="font-family:Georgia,'Times New Roman',serif;font-size:18px;color:#D4A843;margin:0;">
-                    Zelador Analytics
+                    SignalStack
                   </p>
                 </td>
               </tr>
@@ -275,7 +279,7 @@ def build_digest_email_html(synthesis: dict, user_name: str = "") -> str:
               <!-- CTA -->
               <tr>
                 <td style="padding:24px 0;" align="center">
-                  <a href="https://signalstack.app/app"
+                  <a href="{_app_url()}/app"
                     style="display:inline-block;padding:10px 24px;background-color:#D4A843;color:#0C0C0E;text-decoration:none;border-radius:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;font-weight:600;">
                     Open dashboard
                   </a>
@@ -288,7 +292,7 @@ def build_digest_email_html(synthesis: dict, user_name: str = "") -> str:
                     Educational market intelligence only. Not investment advice. All investment decisions are your own responsibility.
                   </p>
                   <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:#4A4A4D;margin:8px 0 0;">
-                    Zelador Analytics &middot; <a href="https://signalstack.app/app/settings" style="color:#4A4A4D;">Manage notifications</a>
+                    SignalStack &middot; <a href="{_app_url()}/app/settings" style="color:#4A4A4D;">Manage notifications</a>
                   </p>
                 </td>
               </tr>
@@ -385,7 +389,7 @@ def build_price_alert_email_html(
               <tr>
                 <td style="padding:0 0 20px;">
                   <p style="font-family:Georgia,'Times New Roman',serif;font-size:18px;color:#D4A843;margin:0;">
-                    Zelador Analytics
+                    SignalStack
                   </p>
                   <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:#FF453A;margin:4px 0 0;text-transform:uppercase;letter-spacing:1px;font-weight:600;">
                     Price Alert
@@ -414,7 +418,7 @@ def build_price_alert_email_html(
               <!-- CTA -->
               <tr>
                 <td style="padding:24px 0;" align="center">
-                  <a href="https://signalstack.app/app"
+                  <a href="{_app_url()}/app"
                     style="display:inline-block;padding:10px 24px;background-color:#D4A843;color:#0C0C0E;text-decoration:none;border-radius:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;font-weight:600;">
                     View full analysis
                   </a>
@@ -427,7 +431,7 @@ def build_price_alert_email_html(
                     Educational market intelligence only. Not investment advice. All investment decisions are your own responsibility.
                   </p>
                   <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:#4A4A4D;margin:8px 0 0;">
-                    Zelador Analytics &middot; <a href="https://signalstack.app/app/settings" style="color:#4A4A4D;">Manage alerts</a>
+                    SignalStack &middot; <a href="{_app_url()}/app/settings" style="color:#4A4A4D;">Manage alerts</a>
                   </p>
                 </td>
               </tr>
@@ -549,7 +553,7 @@ def build_earnings_briefing_email_html(
               <tr>
                 <td style="padding:0 0 20px;">
                   <p style="font-family:Georgia,'Times New Roman',serif;font-size:18px;color:#D4A843;margin:0;">
-                    Zelador Analytics
+                    SignalStack
                   </p>
                   <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:#D4A843;margin:4px 0 0;text-transform:uppercase;letter-spacing:1px;font-weight:600;">
                     Earnings Preview
@@ -578,7 +582,7 @@ def build_earnings_briefing_email_html(
               <!-- CTA -->
               <tr>
                 <td style="padding:24px 0;" align="center">
-                  <a href="https://signalstack.app/app"
+                  <a href="{_app_url()}/app"
                     style="display:inline-block;padding:10px 24px;background-color:#D4A843;color:#0C0C0E;text-decoration:none;border-radius:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;font-weight:600;">
                     View full briefing
                   </a>
@@ -591,7 +595,7 @@ def build_earnings_briefing_email_html(
                     Educational market intelligence only. Not investment advice. All investment decisions are your own responsibility.
                   </p>
                   <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:#4A4A4D;margin:8px 0 0;">
-                    Zelador Analytics &middot; <a href="https://signalstack.app/app/settings" style="color:#4A4A4D;">Manage notifications</a>
+                    SignalStack &middot; <a href="{_app_url()}/app/settings" style="color:#4A4A4D;">Manage notifications</a>
                   </p>
                 </td>
               </tr>
@@ -616,7 +620,6 @@ def build_weekly_email_html(synthesis: dict, user_name: str = "") -> str:
     """
     holdings = synthesis.get("per_holding_intelligence", [])
     insights = synthesis.get("portfolio_level_insights", [])
-    summary = synthesis.get("portfolio_summary", {})
 
     greeting = f"Hi {user_name}," if user_name else "Hi,"
 
@@ -723,7 +726,7 @@ def build_weekly_email_html(synthesis: dict, user_name: str = "") -> str:
               <tr>
                 <td style="padding:0 0 20px;">
                   <p style="font-family:Georgia,'Times New Roman',serif;font-size:18px;color:#D4A843;margin:0;">
-                    Zelador Analytics
+                    SignalStack
                   </p>
                   <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:#4A4A4D;margin:4px 0 0;text-transform:uppercase;letter-spacing:1px;">
                     Weekly Report
@@ -765,7 +768,7 @@ def build_weekly_email_html(synthesis: dict, user_name: str = "") -> str:
               <!-- CTA -->
               <tr>
                 <td style="padding:24px 0;" align="center">
-                  <a href="https://signalstack.app/app"
+                  <a href="{_app_url()}/app"
                     style="display:inline-block;padding:10px 24px;background-color:#D4A843;color:#0C0C0E;text-decoration:none;border-radius:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;font-weight:600;">
                     View full report
                   </a>
@@ -778,7 +781,7 @@ def build_weekly_email_html(synthesis: dict, user_name: str = "") -> str:
                     Educational market intelligence only. Not investment advice. All investment decisions are your own responsibility.
                   </p>
                   <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:#4A4A4D;margin:8px 0 0;">
-                    Zelador Analytics &middot; <a href="https://signalstack.app/app/settings" style="color:#4A4A4D;">Manage notifications</a>
+                    SignalStack &middot; <a href="{_app_url()}/app/settings" style="color:#4A4A4D;">Manage notifications</a>
                   </p>
                 </td>
               </tr>

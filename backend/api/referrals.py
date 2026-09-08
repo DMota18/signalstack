@@ -14,10 +14,12 @@ Endpoints:
 import logging
 import secrets
 import string
+
 from fastapi import APIRouter, Depends
 
+from backend.config import get_settings
 from backend.models.schemas import APIResponse
-from backend.services.auth import get_current_user, CurrentUser
+from backend.services.auth import CurrentUser, get_current_user
 from backend.services.supabase import get_service_client
 
 logger = logging.getLogger("api.referrals")
@@ -52,7 +54,7 @@ async def get_referral_code(
         if existing_code:
             return APIResponse.success({
                 "code": existing_code,
-                "link": f"https://zeladoranalytics.com/signup?ref={existing_code}",
+                "link": f"{get_settings().app_base_url}/signup?ref={existing_code}",
             })
 
     # Generate a new code (retry on collision)
@@ -66,7 +68,7 @@ async def get_referral_code(
         if update_result["status_code"] in (200, 204):
             return APIResponse.success({
                 "code": code,
-                "link": f"https://zeladoranalytics.com/signup?ref={code}",
+                "link": f"{get_settings().app_base_url}/signup?ref={code}",
             })
 
     return APIResponse.fail("Failed to generate referral code", code="generation_error")

@@ -18,7 +18,6 @@ export default function PublicResearchPage() {
   const { ticker } = useParams<{ ticker: string }>();
   const { isDark, toggleTheme } = useTheme();
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   const gold = isDark ? '#D4A843' : '#8B6914';
   const textMuted = isDark ? '#6A6A6D' : '#8A8A8D';
@@ -30,27 +29,27 @@ export default function PublicResearchPage() {
   useEffect(() => {
     if (ticker) {
       const t = ticker.toUpperCase();
-      document.title = `${t} Signal Analysis — Polymarket Odds, Insider Activity, Institutional Flow | Zelador Analytics`;
+      document.title = `${t} Signal Analysis — Polymarket Odds, Insider Activity, Institutional Flow | SignalStack`;
 
       // Canonical URL
-      setLink('canonical', `https://zeladoranalytics.com/research/${t}`);
+      setLink('canonical', `${window.location.origin}/research/${t}`);
 
       // Open Graph
-      setMeta('og:title', `${t} — Signal Analysis | Zelador Analytics`);
+      setMeta('og:title', `${t} — Signal Analysis | SignalStack`);
       setMeta('og:description', `Research ${t}: prediction market odds, insider filings, institutional flow, fundamentals, and news — all in one page.`);
       setMeta('og:type', 'website');
-      setMeta('og:url', `https://zeladoranalytics.com/research/${t}`);
+      setMeta('og:url', `${window.location.origin}/research/${t}`);
       setMeta('og:image', `/api/v1/research/${t}/og-image`);
 
       // Twitter Card
       setMeta('twitter:card', 'summary_large_image');
-      setMeta('twitter:title', `${t} Signal Analysis | Zelador Analytics`);
+      setMeta('twitter:title', `${t} Signal Analysis | SignalStack`);
       setMeta('twitter:description', `Research ${t}: Polymarket odds, insider trades, institutional flow, macro context.`);
       setMeta('twitter:image', `/api/v1/research/${t}/og-image`);
     }
 
     return () => {
-      document.title = 'Zelador Analytics — Every signal on your stock. One page.';
+      document.title = 'SignalStack — Every signal on your stock. One page.';
     };
   }, [ticker]);
 
@@ -65,14 +64,14 @@ export default function PublicResearchPage() {
       <header className="sticky top-0 z-50 backdrop-blur-md" style={{ background: `${bg}DD`, borderBottom: `0.5px solid ${border}` }}>
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <span className="font-display text-base" style={{ color: gold }}>Zelador Analytics</span>
+            <span className="font-display text-base" style={{ color: gold }}>SignalStack</span>
           </Link>
 
           <div className="flex items-center gap-3">
             <PublicSearch isDark={isDark} gold={gold} textMuted={textMuted} surface={surface} border={border} />
 
-            <button onClick={toggleTheme} className="p-1.5 rounded-lg" style={{ color: textMuted }}>
-              {isDark ? <Sun size={16} /> : <Moon size={16} />}
+            <button onClick={toggleTheme} aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'} className="p-1.5 rounded-lg" style={{ color: textMuted }}>
+              {isDark ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
             </button>
 
             <Link
@@ -174,6 +173,7 @@ function PublicSearch({ isDark, gold, textMuted, surface, border }: {
             }
           }}
           placeholder="Search any ticker..."
+          aria-label="Search any ticker"
           className="bg-transparent outline-none w-32 font-body"
           style={{ color: isDark ? '#E8E6E1' : '#1A1A1D' }}
         />

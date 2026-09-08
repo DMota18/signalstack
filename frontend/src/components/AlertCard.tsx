@@ -28,7 +28,6 @@ const typeLabels: Record<string, string> = {
 export default function AlertCard({ alert }: { alert: any }) {
   const { isDark } = useTheme();
   const navigate = useNavigate();
-  const textMuted = isDark ? '#9A9A9D' : '#5A5A5D';
   const accentColor = typeColors[alert.alert_type] || '#D4A843';
 
   const timeAgo = (dateStr: string) => {

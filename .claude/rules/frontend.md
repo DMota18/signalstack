@@ -1,7 +1,7 @@
 # Frontend Rules (applies to frontend/**/*.{tsx,jsx,ts,js})
 
 ## Framework & Tooling
-- React with TypeScript — no plain JS files in `frontend/src/`
+- React with TypeScript — no plain JS files in `frontend/src/` (sole exception: `src/sw.js`, the service worker)
 - Tailwind CSS for styling — no CSS modules, no styled-components
 - Vite as build tool with PWA plugin for service worker generation
 - React Router for client-side routing
@@ -19,7 +19,7 @@
 - Error responses are typed to match the `APIResponse` envelope from the backend
 
 ## State Management
-- React Query (TanStack Query) for server state — caching, refetching, optimistic updates
+- React Query (TanStack Query) for server state — adopted on the portfolio pages (Dashboard, Holdings); new data fetching uses it, remaining pages migrate incrementally
 - React Context for auth state and user preferences
 - No global state library (Redux, Zustand) unless complexity demands it later
 - Portfolio data is server-managed — React Query handles cache invalidation on sync
@@ -28,7 +28,7 @@
 - Service worker must cache the app shell for offline access
 - Push notification permission requested only after user completes onboarding, never on first visit
 - Web Push subscription stored in Supabase via `/push-subscriptions` endpoint
-- Offline fallback page shows last-cached portfolio data with "data may be stale" notice
+- Offline: the precached app shell loads and renders the last React Query cache; a dedicated "data may be stale" notice is on the roadmap
 
 ## Accessibility
 - All interactive elements must be keyboard-accessible

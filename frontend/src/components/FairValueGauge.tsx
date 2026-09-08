@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
-import { Loader2, TrendingUp, TrendingDown, Sparkles } from 'lucide-react';
+import { formatCurrency, formatPercent } from '../lib/format';
+import { Loader2, Sparkles } from 'lucide-react';
 
 interface FairValueGaugeProps {
   ticker: string;
@@ -44,7 +45,7 @@ export default function FairValueGauge({ ticker, currentPrice, financials, funda
       <button onClick={compute}
         className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-body transition-all hover:scale-[1.005]"
         style={{ background: `${gold}08`, border: `0.5px solid ${gold}20`, color: gold }}>
-        <Sparkles size={14} /> Estimate fair value
+        <Sparkles size={14} aria-hidden="true" /> Estimate fair value
       </button>
     );
   }
@@ -90,10 +91,10 @@ export default function FairValueGauge({ ticker, currentPrice, financials, funda
           <p className="text-[10px] font-body uppercase tracking-wider mb-0.5" style={{ color: textMuted }}>Fair value estimate</p>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-numeric font-medium" style={{ color: gold }}>
-              ${mid.toFixed(2)}
+              {formatCurrency(mid)}
             </span>
             <span className="text-sm font-numeric" style={{ color: statusColor }}>
-              {upside >= 0 ? '+' : ''}{upside.toFixed(1)}% {statusLabel.toLowerCase()}
+              {formatPercent(upside, { signed: true })} {statusLabel.toLowerCase()}
             </span>
           </div>
         </div>
@@ -136,9 +137,9 @@ export default function FairValueGauge({ ticker, currentPrice, financials, funda
           </div>
         </div>
         <div className="flex justify-between mt-1">
-          <span className="text-[9px] font-numeric" style={{ color: textMuted }}>${low.toFixed(0)}</span>
-          <span className="text-[9px] font-numeric" style={{ color: gold }}>Fair: ${mid.toFixed(0)}</span>
-          <span className="text-[9px] font-numeric" style={{ color: textMuted }}>${high.toFixed(0)}</span>
+          <span className="text-[9px] font-numeric" style={{ color: textMuted }}>{formatCurrency(low, 0)}</span>
+          <span className="text-[9px] font-numeric" style={{ color: gold }}>Fair: {formatCurrency(mid, 0)}</span>
+          <span className="text-[9px] font-numeric" style={{ color: textMuted }}>{formatCurrency(high, 0)}</span>
         </div>
       </div>
 

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useTheme } from '../hooks/useTheme';
-import { useNavigate } from 'react-router-dom';
 import AddHoldingForm from './AddHoldingForm';
 import { Link2, PenLine, X, ArrowRight, Wallet } from 'lucide-react';
 import { api } from '../api/client';
@@ -12,7 +11,6 @@ interface OnboardingModalProps {
 
 export default function OnboardingModal({ onClose, onHoldingsAdded }: OnboardingModalProps) {
   const { isDark } = useTheme();
-  const navigate = useNavigate();
   const [step, setStep] = useState<'choose' | 'manual'>('choose');
   const [addCount, setAddCount] = useState(0);
 
@@ -48,10 +46,10 @@ export default function OnboardingModal({ onClose, onHoldingsAdded }: Onboarding
         style={{ background: isDark ? '#0C0C0E' : '#FAFAF8', border: `0.5px solid ${border}` }}
       >
         {/* Close button */}
-        <button onClick={onClose}
+        <button onClick={onClose} aria-label="Close onboarding"
           className="absolute top-4 right-4 p-1 rounded-lg transition-opacity hover:opacity-70"
           style={{ color: textMuted }}>
-          <X size={18} />
+          <X size={18} aria-hidden="true" />
         </button>
 
         {/* Gold top bar */}
@@ -66,7 +64,7 @@ export default function OnboardingModal({ onClose, onHoldingsAdded }: Onboarding
                   style={{ background: `${gold}15` }}>
                   <Wallet size={22} style={{ color: gold }} />
                 </div>
-                <h2 className="font-display text-xl mb-2">Welcome to Zelador Analytics</h2>
+                <h2 className="font-display text-xl mb-2">Welcome to SignalStack</h2>
                 <p className="text-sm font-body leading-relaxed" style={{ color: textMuted }}>
                   Add your holdings so we can deliver personalized intelligence
                   across 5 signal dimensions.
@@ -82,7 +80,7 @@ export default function OnboardingModal({ onClose, onHoldingsAdded }: Onboarding
                 >
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
                     style={{ background: `${gold}12` }}>
-                    <Link2 size={18} style={{ color: gold }} />
+                    <Link2 size={18} style={{ color: gold }} aria-hidden="true" />
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-body font-medium">Connect a brokerage</p>
@@ -90,7 +88,7 @@ export default function OnboardingModal({ onClose, onHoldingsAdded }: Onboarding
                       Auto-sync holdings via SnapTrade. Supports 50+ brokerages.
                     </p>
                   </div>
-                  <ArrowRight size={16} style={{ color: textMuted }} />
+                  <ArrowRight size={16} style={{ color: textMuted }} aria-hidden="true" />
                 </button>
 
                 <button
@@ -100,7 +98,7 @@ export default function OnboardingModal({ onClose, onHoldingsAdded }: Onboarding
                 >
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
                     style={{ background: `${gold}12` }}>
-                    <PenLine size={18} style={{ color: gold }} />
+                    <PenLine size={18} style={{ color: gold }} aria-hidden="true" />
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-body font-medium">Add holdings manually</p>
@@ -108,7 +106,7 @@ export default function OnboardingModal({ onClose, onHoldingsAdded }: Onboarding
                       Enter your tickers and quantities. Takes 30 seconds.
                     </p>
                   </div>
-                  <ArrowRight size={16} style={{ color: textMuted }} />
+                  <ArrowRight size={16} style={{ color: textMuted }} aria-hidden="true" />
                 </button>
               </div>
 

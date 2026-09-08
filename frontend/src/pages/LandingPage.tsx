@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { ArrowRight, Shield, Zap, TrendingUp, BarChart3, Sun, Moon, Search } from 'lucide-react';
@@ -17,10 +16,10 @@ export default function LandingPage() {
     <div className="min-h-screen" style={{ background: bg, color: textPrimary }}>
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 lg:px-16 py-5" style={{ borderBottom: `0.5px solid ${border}` }}>
-        <span className="font-display text-lg tracking-wide" style={{ color: gold }}>Zelador Analytics</span>
+        <span className="font-display text-lg tracking-wide" style={{ color: gold }}>SignalStack</span>
         <div className="flex items-center gap-4">
-          <button onClick={toggleTheme} className="p-2 rounded-lg opacity-50 hover:opacity-100 transition-opacity">
-            {isDark ? <Sun size={16} /> : <Moon size={16} />}
+          <button onClick={toggleTheme} aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'} className="p-2 rounded-lg opacity-50 hover:opacity-100 transition-opacity">
+            {isDark ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
           </button>
           <Link to="/signin" className="text-sm font-body" style={{ color: textMuted }}>Sign in</Link>
           <Link to="/signup" className="btn-gold text-sm">Sign up free</Link>
@@ -197,10 +196,10 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="px-6 lg:px-16 py-8 text-center" style={{ borderTop: `0.5px solid ${border}` }}>
         <p className="text-xs font-body" style={{ color: isDark ? '#3A3A3D' : '#AAACB0' }}>
-          Zelador Analytics provides market intelligence for educational purposes, not investment advice.
+          SignalStack provides market intelligence for educational purposes, not investment advice.
         </p>
         <p className="text-xs font-body mt-2" style={{ color: isDark ? '#2A2A2D' : '#D0D0D0' }}>
-          &copy; 2026 Zelador Analytics. All rights reserved.
+          &copy; 2026 SignalStack. All rights reserved.
         </p>
       </footer>
     </div>

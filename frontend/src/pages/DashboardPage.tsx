@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
+import type { Alert, Holding } from '../api/types';
 import PortfolioChart from '../components/PortfolioChart';
 import HoldingsTable from '../components/HoldingsTable';
 import IntelligenceCard from '../components/IntelligenceCard';
 import OnboardingModal from '../components/OnboardingModal';
 import {
   Loader2, TrendingUp, TrendingDown, Minus,
-  ChevronRight, Clock,
+  ChevronRight, Clock, AlertCircle,
 } from 'lucide-react';
+import { formatCurrency, formatCompactCurrency, formatPercent } from '../lib/format';
 
 // ─── Signal helpers ──────────────────────────────────────────────────────────
 
@@ -29,11 +31,11 @@ function signalColor(signal: string, isDark: boolean): string {
 
 function signalLabel(signal: string): string {
   const labels: Record<string, string> = {
-    strongly_bullish: 'STRONG BUY SIGNAL',
+    strongly_bullish: 'STRONGLY BULLISH',
     bullish: 'BULLISH',
     neutral: 'NEUTRAL',
     bearish: 'BEARISH',
-    strongly_bearish: 'STRONG SELL SIGNAL',
+    strongly_bearish: 'STRONGLY BEARISH',
     conflicting: 'CONFLICTING',
     insufficient_data: 'LOW DATA',
   };
@@ -49,13 +51,10 @@ function changeColor(pct: number, isDark: boolean): string {
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const { user } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  const [holdings, setHoldings] = useState<any[]>([]);
-  const [alerts, setAlerts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Theme tokens
@@ -67,37 +66,55 @@ export default function DashboardPage() {
   const border = isDark ? '#1A1A1D' : '#E8E6E1';
   const headerBg = isDark ? '#0A0A0B' : '#F0EDE6';
 
-  // ── Data loading ──────────────────────────────────────────────────────────
+  // ── Data loading (React Query — server state with caching) ───────────────
 
-  useEffect(() => { loadData(); }, []);
+  const holdingsQuery = useQuery({
+    queryKey: ['holdings'],
+    queryFn: async (): Promise<Holding[]> => {
+      const res = await api.getAllHoldings();
+      if (res.status !== 'ok') throw new Error(res.error?.message || 'Failed to load holdings');
+      return res.data ?? [];
+    },
+  });
 
+  const alertsQuery = useQuery({
+    queryKey: ['alerts', 'recent'],
+    queryFn: async (): Promise<Alert[]> => {
+      const res = await api.getAlerts({ limit: 6 });
+      if (res.status !== 'ok') throw new Error(res.error?.message || 'Failed to load alerts');
+      return res.data ?? [];
+    },
+  });
+
+  const holdings = holdingsQuery.data ?? [];
+  const alerts = alertsQuery.data ?? [];
+  const hasHoldings = holdings.length > 0;
+
+  // Refresh prices every 2 minutes — but only while the tab is visible,
+  // so background tabs don't burn external price-provider quota.
   useEffect(() => {
-    if (holdings.length === 0) return;
+    if (!hasHoldings) return;
     const interval = setInterval(async () => {
+      if (document.visibilityState !== 'visible') return;
       const res = await api.refreshPrices();
-      if (res.status === 'ok' && res.data?.updated > 0) {
-        const holdingsRes = await api.getAllHoldings();
-        if (holdingsRes.status === 'ok') setHoldings(holdingsRes.data || []);
+      if (res.status === 'ok' && (res.data?.updated ?? 0) > 0) {
+        queryClient.invalidateQueries({ queryKey: ['holdings'] });
       }
     }, 120_000);
     return () => clearInterval(interval);
-  }, [holdings.length]);
+  }, [hasHoldings, queryClient]);
 
-  const loadData = async () => {
-    setLoading(true);
-    const [holdingsRes, alertsRes] = await Promise.all([
-      api.getAllHoldings(),
-      api.getAlerts({ limit: 6 }),
-    ]);
-
-    if (holdingsRes.status === 'ok') setHoldings(holdingsRes.data || []);
-    if (alertsRes.status === 'ok') setAlerts(alertsRes.data || []);
-    setLoading(false);
-
+  // First visit with an empty portfolio → offer onboarding
+  useEffect(() => {
     const dismissed = sessionStorage.getItem('ss_onboarding_dismissed');
-    if (holdingsRes.status === 'ok' && (!holdingsRes.data || holdingsRes.data.length === 0) && !dismissed) {
+    if (holdingsQuery.isSuccess && holdings.length === 0 && !dismissed) {
       setShowOnboarding(true);
     }
+  }, [holdingsQuery.isSuccess, holdings.length]);
+
+  const refreshData = () => {
+    queryClient.invalidateQueries({ queryKey: ['holdings'] });
+    queryClient.invalidateQueries({ queryKey: ['alerts'] });
   };
 
   const totalValue = holdings.reduce((sum, h) => sum + (h.market_value || 0), 0);
@@ -106,11 +123,30 @@ export default function DashboardPage() {
 
   const sortedHoldings = [...holdings].sort((a, b) => (b.day_gain_pct || 0) - (a.day_gain_pct || 0));
 
-  if (loading) {
+  if (holdingsQuery.isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 size={24} className="animate-spin" style={{ color: gold }} />
         <span className="ml-3 text-sm font-body" style={{ color: textMuted }}>Loading your portfolio...</span>
+      </div>
+    );
+  }
+
+  // Failed loads get a visible error with a retry — never a silent empty state
+  if (holdingsQuery.isError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3" role="alert">
+        <AlertCircle size={24} style={{ color: textMuted }} aria-hidden="true" />
+        <p className="text-sm font-body" style={{ color: textMuted }}>
+          Couldn't load your portfolio. {(holdingsQuery.error as Error)?.message}
+        </p>
+        <button
+          onClick={() => holdingsQuery.refetch()}
+          className="text-xs font-body px-4 py-2 rounded-lg"
+          style={{ background: `${gold}15`, color: gold }}
+        >
+          Try again
+        </button>
       </div>
     );
   }
@@ -122,7 +158,7 @@ export default function DashboardPage() {
       {showOnboarding && (
         <OnboardingModal
           onClose={() => { setShowOnboarding(false); sessionStorage.setItem('ss_onboarding_dismissed', '1'); }}
-          onHoldingsAdded={loadData}
+          onHoldingsAdded={refreshData}
         />
       )}
 
@@ -137,7 +173,10 @@ export default function DashboardPage() {
             </div>
 
             <div className="px-5 pb-4">
-              <button onClick={() => navigate('/app/alerts')} className="w-full text-left group">
+              <button
+                onClick={() => navigate(alerts[0]?.id ? `/app/alerts/${alerts[0].id}` : '/app/alerts')}
+                className="w-full text-left group"
+              >
                 <h2 className="font-display text-base group-hover:opacity-80 transition-all" style={{ color: textPrimary }}>
                   {alerts[0]?.title || 'Latest Intelligence'}
                 </h2>
@@ -176,7 +215,7 @@ export default function DashboardPage() {
         {/* Signal feed — stacked alert cards */}
         {alerts.length > 1 && (
           <div className="space-y-1">
-            {alerts.slice(1, 6).map((alert: any, i: number) => {
+            {alerts.slice(1, 6).map((alert: Alert, i: number) => {
               const alertDate = alert.created_at
                 ? new Date(alert.created_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
                 : '';
@@ -186,7 +225,7 @@ export default function DashboardPage() {
               return (
                 <button
                   key={alert.id || i}
-                  onClick={() => navigate('/app/alerts')}
+                  onClick={() => navigate(alert.id ? `/app/alerts/${alert.id}` : '/app/alerts')}
                   className="w-full rounded-lg px-4 py-3 text-left transition-all hover:opacity-80"
                   style={{ background: surface, border: `0.5px solid ${border}` }}
                 >
@@ -217,7 +256,7 @@ export default function DashboardPage() {
               </p>
               <button onClick={() => navigate('/app/holdings')}
                 className="text-[10px] font-body hover:opacity-70" style={{ color: gold }}>
-                Manage <ChevronRight size={10} className="inline" />
+                Manage <ChevronRight size={10} className="inline" aria-hidden="true" />
               </button>
             </div>
             <HoldingsTable holdings={holdings} />
@@ -258,12 +297,12 @@ export default function DashboardPage() {
           </p>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="font-display text-lg" style={{ color: textPrimary }}>
-              ${totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              {formatCurrency(totalValue, 0)}
             </span>
             {totalDayChange !== 0 && (
               <span className="text-[11px] font-body font-medium"
                 style={{ color: changeColor(totalDayChange, isDark) }}>
-                {totalDayChange >= 0 ? '+' : ''}{totalDayPct.toFixed(2)}%
+                {formatPercent(totalDayPct, { signed: true })}
               </span>
             )}
           </div>
@@ -294,20 +333,18 @@ export default function DashboardPage() {
                 >
                   <span className="text-[10px] font-numeric" style={{ color: textMuted }}>{i + 1}</span>
                   <div className="flex items-center gap-1.5 min-w-0">
-                    {dayPct > 0 ? <TrendingUp size={10} style={{ color: changeColor(dayPct, isDark) }} /> :
-                     dayPct < 0 ? <TrendingDown size={10} style={{ color: changeColor(dayPct, isDark) }} /> :
-                     <Minus size={10} style={{ color: textMuted }} />}
+                    {dayPct > 0 ? <TrendingUp size={10} style={{ color: changeColor(dayPct, isDark) }} aria-hidden="true" /> :
+                     dayPct < 0 ? <TrendingDown size={10} style={{ color: changeColor(dayPct, isDark) }} aria-hidden="true" /> :
+                     <Minus size={10} style={{ color: textMuted }} aria-hidden="true" />}
                     <span className="text-[11px] font-body font-semibold truncate" style={{ color: textPrimary }}>
                       {h.ticker}
                     </span>
                   </div>
                   <span className="text-[10px] font-numeric text-right" style={{ color: changeColor(dayPct, isDark) }}>
-                    {dayPct >= 0 ? '+' : ''}{dayPct.toFixed(1)}%
+                    {formatPercent(dayPct, { signed: true })}
                   </span>
                   <span className="text-[10px] font-numeric text-right" style={{ color: textSecondary }}>
-                    {h.market_value >= 1000
-                      ? `$${(h.market_value / 1000).toFixed(1)}k`
-                      : `$${h.market_value?.toFixed(0) || '0'}`}
+                    {formatCompactCurrency(h.market_value || 0)}
                   </span>
                 </button>
               );

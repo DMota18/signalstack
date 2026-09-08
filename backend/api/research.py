@@ -9,7 +9,7 @@ Data sources (all free):
   - yfinance: fundamentals, financials, analyst data, price history
   - Finnhub: news with sentiment, insider trades, company profile
   - Polymarket: prediction market odds
-  
+
 All providers are called in parallel with graceful degradation.
 If any provider fails, the response includes what succeeded.
 
@@ -19,21 +19,22 @@ Endpoints:
 """
 
 import asyncio
-import time
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Optional
+import time
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, Query
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
 from backend.models.schemas import APIResponse
-from backend.services.auth import get_current_user, CurrentUser
+from backend.services.auth import CurrentUser, get_current_user
 from backend.services.supabase import get_service_client
 from backend.tools.finnhub import (
     _finnhub_request,
-    get_news_sentiment,
     get_insider_trades,
+    get_news_sentiment,
 )
-from backend.tools.polymarket import search_polymarket_markets, TICKER_SEARCH_TERMS
+from backend.tools.polymarket import TICKER_SEARCH_TERMS, search_polymarket_markets
 
 logger = logging.getLogger("api.research")
 
@@ -213,8 +214,9 @@ def _is_nan(val) -> bool:
 def _fetch_yf_financials(ticker: str) -> dict:
     """Fetch financial statements from yfinance — income, balance sheet, cash flow."""
     try:
-        import yfinance as yf
         import math
+
+        import yfinance as yf
         t = yf.Ticker(_yf_ticker_symbol(ticker))
 
         def _df_to_list(df, max_periods=5) -> list:
@@ -251,8 +253,9 @@ def _fetch_yf_financials(ticker: str) -> dict:
 def _fetch_yf_institutional(ticker: str) -> dict:
     """Fetch institutional holders and major holders from yfinance."""
     try:
-        import yfinance as yf
         import math
+
+        import yfinance as yf
         t = yf.Ticker(_yf_ticker_symbol(ticker))
 
         holders = []
@@ -328,7 +331,7 @@ def _fetch_yf_similar(ticker: str) -> dict:
             "industry": industry,
             "similar_tickers": similar,
         }
-    except Exception as e:
+    except Exception:
         return {"ok": False, "similar_tickers": []}
 
 
@@ -459,8 +462,8 @@ _optional_bearer = HTTPBearer(auto_error=False)
 
 
 async def _optional_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_optional_bearer),
-) -> Optional[CurrentUser]:
+    credentials: HTTPAuthorizationCredentials | None = Depends(_optional_bearer),
+) -> CurrentUser | None:
     """Optional auth — returns CurrentUser if authenticated, None if not."""
     if credentials is None:
         return None
@@ -473,7 +476,7 @@ async def _optional_user(
 @router.get("/{ticker}", response_model=APIResponse)
 async def get_research(
     ticker: str,
-    user: Optional[CurrentUser] = Depends(_optional_user),
+    user: CurrentUser | None = Depends(_optional_user),
 ):
     """Get comprehensive research data for a single ticker.
 
@@ -585,7 +588,7 @@ async def get_research(
             "finnhub_insider": "ok" if insider.get("ok") else "failed",
             "polymarket": "ok" if polymarket.get("ok") else "failed",
         },
-        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "fetched_at": datetime.now(UTC).isoformat(),
     }
 
     # Cache the response
@@ -602,7 +605,7 @@ async def get_research(
 async def get_research_chart(
     ticker: str,
     timeframe: str = Query("3M", regex="^(1D|1W|1M|3M|6M|1Y|5Y)$"),
-    user: Optional[CurrentUser] = Depends(_optional_user),
+    user: CurrentUser | None = Depends(_optional_user),
 ):
     """Get price chart data for a single ticker. PUBLIC ENDPOINT."""
     ticker = ticker.upper().strip()
@@ -624,8 +627,8 @@ async def get_research_chart(
 def _fetch_chart_data(ticker: str, timeframe: str) -> dict:
     """Fetch OHLCV chart data from yfinance."""
     try:
+
         import yfinance as yf
-        from datetime import timezone as tz
 
         period_map = {
             "1D": ("1d", "5m"),
@@ -655,7 +658,7 @@ def _fetch_chart_data(ticker: str, timeframe: str) -> dict:
             # For daily+ data, deduplicate by date (yfinance can return
             # multiple entries for the same calendar day on some intervals)
             if not is_intraday:
-                utc_dt = dt.astimezone(tz.utc) if hasattr(dt, 'astimezone') else dt
+                utc_dt = dt.astimezone(UTC) if hasattr(dt, 'astimezone') else dt
                 date_key = utc_dt.strftime("%Y-%m-%d")
                 if date_key in seen_dates:
                     continue
@@ -706,7 +709,7 @@ SEARCH_CACHE_TTL = 300  # 5 min
 @router.get("/search/symbols", response_model=APIResponse)
 async def search_symbols(
     q: str = Query(..., min_length=1, max_length=50, description="Search query — ticker or company name"),
-    user: Optional[CurrentUser] = Depends(_optional_user),
+    user: CurrentUser | None = Depends(_optional_user),
 ):
     """Search for stock/ETF/crypto symbols by ticker or company name.
     PUBLIC ENDPOINT — powers the search bar on both public and authenticated pages.
@@ -733,9 +736,8 @@ async def search_symbols(
     data = result.get("data", {})
     raw_results = data.get("result", []) if isinstance(data, dict) else []
 
-    # Filter and normalize — only show stocks/ETFs on major exchanges
+    # Filter and normalize — only show stock/ETF security types
     ALLOWED_TYPES = {"Common Stock", "ETP", "ETF", "REIT", "ADR", "Crypto"}
-    MAJOR_EXCHANGES = {"US", "NY", "NQ", "NYSE", "NASDAQ", "AMEX", "BATS", "ARCA"}
 
     matches = []
     seen_symbols = set()
@@ -745,7 +747,6 @@ async def search_symbols(
         display_symbol = r.get("displaySymbol", symbol)
         name = r.get("description", "")
         sec_type = r.get("type", "")
-        exchange = r.get("primary_exchange", "") or ""
 
         # Skip duplicates
         if display_symbol in seen_symbols:

@@ -19,9 +19,8 @@ Used by:
 
 import json
 import logging
-from typing import Optional
 
-from pywebpush import webpush, WebPushException
+from pywebpush import WebPushException, webpush
 
 from backend.config import get_settings
 from backend.services.supabase import get_service_client
@@ -33,8 +32,8 @@ async def send_push_to_user(
     user_id: str,
     title: str,
     body: str,
-    data: Optional[dict] = None,
-    url: Optional[str] = None,
+    data: dict | None = None,
+    url: str | None = None,
 ) -> dict:
     """Send a push notification to all of a user's subscribed devices.
 

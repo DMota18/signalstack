@@ -6,7 +6,7 @@ Returns an SVG that renders as a signal card showing:
   - Ticker + company name
   - Price + daily change
   - Signal scores (sentiment, insider, institutional, polymarket, macro)
-  - Zelador Analytics branding
+  - SignalStack branding
 
 Used by Open Graph and Twitter Card meta tags on public research pages.
 
@@ -16,13 +16,14 @@ Endpoint:
 
 import asyncio
 import logging
+
 from fastapi import APIRouter, Response
 
 from backend.api.research import (
+    QUOTE_CACHE_TTL,
     _fetch_yf_fundamentals,
     _get_cached,
     _set_cached,
-    QUOTE_CACHE_TTL,
 )
 
 logger = logging.getLogger("api.og_image")
@@ -113,7 +114,7 @@ async def get_og_image(ticker: str):
 
   <!-- Brand -->
   <text x="60" y="60" fill="#D4A843" font-size="18" font-weight="600" font-family="Georgia,serif" letter-spacing="1">
-    Zelador Analytics
+    SignalStack
   </text>
   <text x="1140" y="60" fill="#4A4A4D" font-size="13" font-family="-apple-system,BlinkMacSystemFont,sans-serif" text-anchor="end">
     Signal Analysis
@@ -176,7 +177,7 @@ async def get_og_image(ticker: str):
 
   <!-- CTA -->
   <text x="1140" y="572" fill="#4A4A4D" font-size="13" font-family="-apple-system,BlinkMacSystemFont,sans-serif" text-anchor="end">
-    zeladoranalytics.com/research/{_escape(ticker)}
+    {_display_host()}/research/{_escape(ticker)}
   </text>
 
   <!-- Disclaimer -->
@@ -206,7 +207,7 @@ def _fallback_image(ticker: str) -> Response:
     Signal Analysis
   </text>
   <text x="600" y="420" fill="#D4A843" font-size="18" font-family="Georgia,serif" text-anchor="middle">
-    Zelador Analytics
+    SignalStack
   </text>
 </svg>"""
     return Response(content=svg, media_type="image/svg+xml",
@@ -216,6 +217,13 @@ def _fallback_image(ticker: str) -> Response:
 def _escape(text: str) -> str:
     """Escape text for SVG XML."""
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def _display_host() -> str:
+    """Hostname shown in the OG image CTA — derived from DOMAIN."""
+    from backend.config import get_settings
+    settings = get_settings()
+    return settings.domain or "signalstack"
 
 
 def _fmt_cap(val) -> str:

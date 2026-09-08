@@ -1,13 +1,13 @@
 # Tool Rules (applies to backend/tools/**/*.py)
 
 ## Tool Description Quality
-- Every tool function must have a docstring that matches its MCP tool description exactly
+- Every tool function has a one-line docstring; the full contract lives in its MCP tool description
 - Descriptions must include: what it does (1 sentence), input format, example queries (2-3), and a "Do NOT use for" boundary clause
 - The "Do NOT use for" clause prevents misrouting between similar tools — this is non-negotiable
 - If two tools could plausibly handle the same query, the boundary clauses must explicitly resolve the ambiguity
 
 ## Input Validation
-- Tool inputs must be validated with Pydantic models before any API call
+- Tool inputs are validated explicitly (presence, length, format checks) before any API call
 - Invalid inputs return a VALIDATION category ToolError immediately — no API call attempted
 - Ticker symbols are uppercased and stripped of whitespace before processing
 - Date inputs are validated and normalized to ISO 8601 before use
@@ -16,7 +16,9 @@
 - All external API calls must have a timeout (30s default)
 - All external API calls must have retry logic (3 attempts with exponential backoff)
 - Rate limit awareness: check remaining quota before calling (where the API provides this info)
-- Never make more than one API call per tool invocation without explicit justification
+- Minimize API calls per tool invocation; multi-call tools (e.g. the macro
+  indicator batch, which fetches several FRED series) must justify it in
+  their description and stay within provider rate limits
 
 ## Error Responses
 - Structured error responses only — never return raw exception strings or stack traces

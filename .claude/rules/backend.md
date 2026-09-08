@@ -7,8 +7,12 @@
 
 ## Authentication & Authorization
 - Every protected endpoint must depend on `get_current_user()` — no manual JWT parsing in routes
-- Tier gating uses `require_tier("pro", "premium")` dependency — never check tier in route body
-- Service-role Supabase client used only in `services/` and `jobs/` — never in `api/` route handlers
+- Tier gating returns `APIResponse.fail(code="tier_required", details={"upgrade_url": ...})` —
+  the frontend parses the envelope to render upgrade prompts, so never raise a 403 for tier gates
+- Service-role Supabase client in route handlers is reserved for system-level
+  operations (Stripe webhooks, SEO/OG rendering, referral bookkeeping,
+  connection registration); user-scoped reads go through the anon client with
+  `user_jwt=user.jwt_token` so RLS stays in the loop
 - Route handlers use the anon client with `user_jwt=user.jwt_token` to respect RLS
 
 ## Database Access

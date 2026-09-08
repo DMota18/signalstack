@@ -8,14 +8,15 @@ or ES256 (asymmetric, verified with JWKS public keys). This implementation
 supports both by trying JWKS first, then falling back to HS256.
 """
 
-import jwt
-import time
 import logging
-from jwt import PyJWKClient
+import time
+
+import jwt
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jwt import PyJWKClient
 from pydantic import BaseModel
-from typing import Optional
+
 from backend.config import get_settings
 from backend.services.supabase import get_service_client
 
@@ -23,7 +24,7 @@ logger = logging.getLogger("services.auth")
 
 security = HTTPBearer()
 
-_jwks_client: Optional[PyJWKClient] = None
+_jwks_client: PyJWKClient | None = None
 _jwks_last_refresh: float = 0
 JWKS_CACHE_TTL = 3600
 
@@ -79,18 +80,18 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token expired. Use /auth/refresh to get a new token.",
-        )
+        ) from None
     except jwt.InvalidTokenError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid token: {e}",
-        )
+        ) from e
     except Exception as e:
         logger.error(f"Token verification failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Token verification failed: {e}",
-        )
+        ) from e
 
     user_id = payload.get("sub")
     email = payload.get("email", "")
@@ -117,17 +118,9 @@ async def get_current_user(
     return CurrentUser(id=user_id, email=email, tier=tier, jwt_token=token)
 
 
-def require_tier(*allowed_tiers: str):
-    async def check_tier(user: CurrentUser = Depends(get_current_user)):
-        if user.tier not in allowed_tiers:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "code": "tier_required",
-                    "message": f"This feature requires {' or '.join(allowed_tiers)} tier.",
-                    "current_tier": user.tier,
-                    "upgrade_url": "/settings/billing",
-                },
-            )
-        return user
-    return check_tier
+# NOTE on tier gating: routes gate tier-locked features inline and
+# return APIResponse.fail(code="tier_required", ...) — the frontend
+# client expects the standard envelope, not a 403, so it can render the
+# upgrade prompt. A require_tier() dependency existed here but was
+# never adopted for exactly that reason; data-dependent gates (per
+# explore category, watchlist limits) can't be dependencies anyway.

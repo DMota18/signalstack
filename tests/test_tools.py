@@ -10,15 +10,18 @@ Tests for tool implementations covering all 4 error categories:
 Plus success paths for each tool.
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 
 from backend.tools.base import (
-    ToolResult, ToolError,
-    transient_error, validation_error, business_error, permission_error,
+    ToolResult,
+    business_error,
     classify_http_error,
+    permission_error,
+    transient_error,
+    validation_error,
 )
-
 
 # ============================================================================
 # BASE ERROR FACTORIES
@@ -95,20 +98,27 @@ class TestSearchPolymarketMarkets:
 
     @pytest.mark.asyncio
     async def test_search_success(self, mock_settings):
+        # Gamma /events shape: events carry their markets nested
         mock_response = {
             "status_code": 200,
             "data": [
                 {
-                    "question": "Will NVDA beat Q2 2026 earnings?",
-                    "description": "NVIDIA earnings prediction",
-                    "outcomePrices": '["0.73", "0.27"]',
-                    "volume24hr": 50000,
-                    "liquidity": 25000,
-                    "endDate": "2026-04-20T00:00:00Z",
-                    "category": "crypto",
-                    "slug": "nvda-q2-earnings",
-                    "conditionId": "cond_123",
-                    "active": True,
+                    "title": "NVDA Q2 2026 Earnings",
+                    "slug": "nvda-q2-2026-earnings",
+                    "markets": [
+                        {
+                            "question": "Will NVDA beat Q2 2026 earnings?",
+                            "description": "NVIDIA earnings prediction",
+                            "outcomePrices": '["0.73", "0.27"]',
+                            "volume24hr": 50000,
+                            "liquidity": 25000,
+                            "endDate": "2026-04-20T00:00:00Z",
+                            "category": "crypto",
+                            "slug": "nvda-q2-earnings",
+                            "conditionId": "cond_123",
+                            "active": True,
+                        },
+                    ],
                 },
             ],
         }
@@ -227,19 +237,19 @@ class TestPolymarketRelevanceFilter:
     """The relevance filter should exclude sports/political noise."""
 
     def test_filters_sports_market(self):
-        from backend.tools.polymarket import _is_relevant, _build_relevance_keywords
+        from backend.tools.polymarket import _build_relevance_keywords, _is_relevant
         market = {"question": "Lakers vs Celtics game tonight?", "category": "sports"}
         keywords = _build_relevance_keywords("NVDA")
         assert _is_relevant(market, keywords) is False
 
     def test_keeps_relevant_market(self):
-        from backend.tools.polymarket import _is_relevant, _build_relevance_keywords
+        from backend.tools.polymarket import _build_relevance_keywords, _is_relevant
         market = {"question": "Will Nvidia beat Q2 earnings?", "category": "economics"}
         keywords = _build_relevance_keywords("Nvidia")
         assert _is_relevant(market, keywords) is True
 
     def test_filters_far_future_political_market(self):
-        from backend.tools.polymarket import _is_relevant, _build_relevance_keywords
+        from backend.tools.polymarket import _build_relevance_keywords, _is_relevant
         market = {
             "question": "Who will win the 2028 presidential election?",
             "category": "politics",

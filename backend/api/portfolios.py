@@ -5,8 +5,9 @@ These endpoints serve the portfolio dashboard in the PWA.
 """
 
 from fastapi import APIRouter, Depends, Query
+
 from backend.models.schemas import APIResponse
-from backend.services.auth import get_current_user, CurrentUser
+from backend.services.auth import CurrentUser, get_current_user
 from backend.services.supabase import get_anon_client
 
 router = APIRouter(prefix="/portfolios", tags=["portfolios"])
@@ -90,8 +91,9 @@ async def list_all_holdings(user: CurrentUser = Depends(get_current_user)):
     """List all holdings across all portfolios for the current user.
     Enriches with live day-change data from Finnhub quotes."""
     import asyncio
-    from backend.tools.finnhub import _finnhub_request
+
     from backend.tools.coingecko import get_crypto_data
+    from backend.tools.finnhub import _finnhub_request
 
     db = get_anon_client()
     result = await db.select(

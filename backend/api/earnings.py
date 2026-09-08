@@ -6,12 +6,13 @@ Serves the Earnings page in the PWA. Two endpoints:
   POST /earnings/refresh  — Trigger a Finnhub refresh for user's tickers
 """
 
-import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
+
 from fastapi import APIRouter, Depends
+
 from backend.models.schemas import APIResponse
-from backend.services.auth import get_current_user, CurrentUser
+from backend.services.auth import CurrentUser, get_current_user
 from backend.services.supabase import get_anon_client, get_service_client
 from backend.tools.finnhub import _finnhub_request
 
@@ -63,8 +64,7 @@ async def get_earnings(
         return APIResponse.success([])
 
     # Query earnings_calendar for these tickers
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    cutoff = (datetime.now(timezone.utc) + timedelta(days=60)).strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
     ticker_filter = ",".join(sorted(tickers))
 
     earnings_res = await db.select(
@@ -81,7 +81,7 @@ async def get_earnings(
     earnings = []
     if earnings_res["status_code"] == 200 and isinstance(earnings_res["data"], list):
         for e in earnings_res["data"]:
-            days_until = (datetime.strptime(e["report_date"], "%Y-%m-%d") - datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)).days
+            days_until = (datetime.strptime(e["report_date"], "%Y-%m-%d") - datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)).days
             earnings.append({
                 **e,
                 "security_name": ticker_names.get(e["ticker"], ""),
@@ -122,8 +122,8 @@ async def refresh_earnings(
 
     # Finnhub earnings calendar endpoint: /calendar/earnings
     # It takes from/to date range, not per-ticker, so one call covers all
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    future = (datetime.now(timezone.utc) + timedelta(days=60)).strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    future = (datetime.now(UTC) + timedelta(days=60)).strftime("%Y-%m-%d")
 
     result = await _finnhub_request(
         "/calendar/earnings",

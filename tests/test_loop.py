@@ -10,17 +10,17 @@ Tests for:
 """
 
 import json
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 
-from backend.agents.loop import run_agent_loop, MAX_ITERATIONS
+import pytest
+
+from backend.agents.loop import MAX_ITERATIONS, run_agent_loop
 from tests.conftest import (
     make_claude_end_turn,
     make_claude_tool_use,
     make_synthesis_tool_use,
     make_user_context,
 )
-
 
 SIMPLE_SYSTEM = "You are a test agent."
 SIMPLE_TOOLS = [{

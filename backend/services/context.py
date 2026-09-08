@@ -16,8 +16,8 @@ Critical isolation rules:
 """
 
 from dataclasses import dataclass, field
-from typing import Optional
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from backend.services.case_facts import build_case_facts
 from backend.services.supabase import get_service_client
 
@@ -26,12 +26,12 @@ from backend.services.supabase import get_service_client
 class Holding:
     """A single position in the user's portfolio."""
     ticker: str
-    security_name: Optional[str]
+    security_name: str | None
     security_type: str
     quantity: float
-    current_price: Optional[float]
-    market_value: Optional[float]
-    pct_of_portfolio: Optional[float]
+    current_price: float | None
+    market_value: float | None
+    pct_of_portfolio: float | None
 
 
 @dataclass
@@ -45,7 +45,7 @@ class InvestorPreferences:
 @dataclass
 class UserContext:
     """Isolated context for a single intelligence run.
-    
+
     Created fresh for each run. Never reused across runs or users.
     The coordinator receives this; subagents receive only the
     specific fields they need (holdings list, earnings calendar, etc).
@@ -70,7 +70,7 @@ class UserContext:
     upcoming_earnings: list[dict]
 
     # Run metadata
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def all_tickers(self) -> list[str]:
@@ -106,11 +106,11 @@ class UserContext:
 
 async def build_user_context(user_id: str) -> UserContext:
     """Build a fresh, isolated context for an intelligence run.
-    
+
     This is called at the start of every scheduled job, on-demand request,
     or real-time alert. The context is never reused — holdings and prices
     change between runs.
-    
+
     Flow:
       1. Build Case Facts Block (formatted string for prompt injection)
       2. Fetch structured holdings data (for subagent JSON passing)
@@ -198,7 +198,7 @@ async def build_user_context(user_id: str) -> UserContext:
             columns="ticker,report_date,report_time,consensus_eps,consensus_revenue",
             filters={
                 "ticker": f"in.({ticker_filter})",
-                "report_date": f"gte.{datetime.now(timezone.utc).strftime('%Y-%m-%d')}",
+                "report_date": f"gte.{datetime.now(UTC).strftime('%Y-%m-%d')}",
             },
             order="report_date.asc",
             limit=20,

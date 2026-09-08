@@ -21,6 +21,11 @@
 ## Hub-and-Spoke Agent Architecture
 - Coordinator receives user context and dispatches to 6 specialist subagents
 - Subagents: Sentiment, Polymarket, Insider, Institutional Flow, Macro, Profile
+- Dispatch is SEQUENTIAL with inter-agent delays — free-tier provider rate
+  limits make parallel fan-out counterproductive; do not "optimize" this
+  without changing the rate-limit strategy
+- A subagent returning prose instead of JSON is a FAILURE (invalid_json),
+  never wrapped as success — it corrupts the 5/5 job accounting otherwise
 - Subagents do NOT inherit the coordinator's conversation history
 - Subagents do NOT share memory with each other
 - Every piece of context a subagent needs must be explicitly passed in its prompt
@@ -47,7 +52,7 @@
 - `backend/jobs/` — Celery tasks and scheduling
 - `backend/middleware/` — Rate limiting, CORS, request logging
 - `frontend/src/` — React PWA source
-- `tests/` — Mirrors backend structure
+- `tests/` — Focused suites by domain (loop, hooks, pipeline, coordinator, subagents, tools, jobs, routes, cost control)
 
 ## Hooks Pipeline (Programmatic Enforcement)
 - Pre-execution hooks block trade tools entirely, gate features by tier, require investor profile for idea generation
@@ -76,7 +81,7 @@
 - Never log raw brokerage credentials, SnapTrade tokens, or full portfolio values
 - SnapTrade tokens encrypted with Fernet before storage — database stores ciphertext only
 - Supabase JWT verified server-side via PyJWT with the JWT secret
-- Rate limiting enforced per-user by tier (20/60/120 req/min for free/pro/premium)
+- Rate limiting enforced per-user by tier (free 20 / pro 100 req/min; premium is a legacy alias for pro) — limits live in config.py, the single source of truth
 - Row-level security on all user-data tables — users see only their own rows
 - Service role used only for backend system operations (alerts, jobs, sync, cache)
 
@@ -84,7 +89,7 @@
 - All tools must have integration tests that mock external APIs
 - Agent tests verify stop_reason handling and error propagation
 - Compliance tests verify disclaimer insertion on every output path
-- Every test file must test both success and all 4 error categories
+- Tool test files cover success plus all 4 error categories; other suites cover their domain's failure modes
 - Use pytest with async support (pytest-asyncio)
 - Name pattern: `test_{module}_{function}_{scenario}`
 
@@ -94,7 +99,7 @@
 - FRED: 120 calls/min (free)
 - SEC EDGAR: no formal limit (be respectful — 10 req/sec max)
 - Claude API: scale with tier — track tokens_used and estimated_cost_usd per job run
-- All external API calls retry on 429 with exponential backoff (5s, 15s, 30s)
+- Tool API calls retry on 429/5xx with exponential backoff (5s base, capped at 30s); the Claude API itself backs off longer (30s doubling on 429, 45s doubling on 529)
 
 ## Path-Specific Rules
 @import .claude/rules/backend.md
@@ -105,6 +110,6 @@
 ## What Does NOT Go Here
 - Full intelligence pipeline execution logic → lives in `backend/agents/`
 - MCP tool implementations → lives in `backend/tools/`
-- Prompt templates and few-shot examples → lives in `backend/agents/prompts/`
+- Prompt templates and few-shot examples → live with their agents in `backend/agents/`
 - Database migrations → lives in `migrations/`
 - Codebase investigation before major changes → use plan mode

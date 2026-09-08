@@ -16,17 +16,15 @@ Placement rule (Domain 5.2):
   - Synthesis instructions + schema → END (recency effect)
 """
 
-from typing import Optional
-from datetime import datetime, timezone
 from backend.services.supabase import get_service_client
 
 
 async def build_case_facts(user_id: str) -> str:
     """Build the Case Facts Block for a user.
-    
+
     Fetches from the user_case_facts view (service client — this runs
     in the backend, not in a user-facing request).
-    
+
     Returns a formatted string ready to inject at the top of the
     coordinator system prompt.
     """

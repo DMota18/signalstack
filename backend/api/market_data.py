@@ -12,11 +12,13 @@ Endpoints:
 """
 
 import logging
+
 from fastapi import APIRouter, Depends, Query
+
 from backend.models.schemas import APIResponse
-from backend.services.auth import get_current_user, CurrentUser
-from backend.tools.fear_greed import get_fear_greed
+from backend.services.auth import CurrentUser, get_current_user
 from backend.tools.alpha_vantage import get_technical_indicators
+from backend.tools.fear_greed import get_fear_greed
 from backend.tools.newsapi import get_market_headlines
 from backend.tools.unusual_whales import get_congressional_trades, get_options_flow
 

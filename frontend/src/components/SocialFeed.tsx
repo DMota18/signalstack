@@ -37,11 +37,10 @@ export default function SocialFeed({ ticker }: SocialFeedProps) {
   const { isDark } = useTheme();
   const [messages, setMessages] = useState<STMessage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [symbolInfo, setSymbolInfo] = useState<any>(null);
+  const [, setSymbolInfo] = useState<any>(null);
 
   const gold = isDark ? '#D4A843' : '#8B6914';
   const textMuted = isDark ? '#9A9A9D' : '#5A5A5D';
-  const border = isDark ? '#1A1A1D' : '#E8E6E1';
   const surface = isDark ? '#0C0C0E' : '#F8F7F4';
   const greenColor = isDark ? '#34C759' : '#28A745';
   const redColor = isDark ? '#FF453A' : '#DC3545';
@@ -51,8 +50,9 @@ export default function SocialFeed({ ticker }: SocialFeedProps) {
     setMessages([]);
     api.getStockTwits(ticker, 20).then((res) => {
       if (res.status === 'ok' && res.data) {
-        setMessages(res.data.messages || []);
-        setSymbolInfo(res.data.symbol || null);
+        const data = res.data as { messages?: STMessage[]; symbol?: unknown };
+        setMessages(data.messages || []);
+        setSymbolInfo(data.symbol || null);
       }
       setLoading(false);
     });
@@ -81,11 +81,11 @@ export default function SocialFeed({ ticker }: SocialFeedProps) {
         <div className="flex items-center justify-center gap-3 mt-3">
           <a href={stocktwitsUrl} target="_blank" rel="noopener noreferrer"
             className="text-[10px] font-body flex items-center gap-1" style={{ color: gold }}>
-            StockTwits <ExternalLink size={8} />
+            StockTwits <ExternalLink size={8} aria-hidden="true" />
           </a>
           <a href={xSearchUrl} target="_blank" rel="noopener noreferrer"
             className="text-[10px] font-body flex items-center gap-1" style={{ color: textMuted }}>
-            𝕏 Search <ExternalLink size={8} />
+            𝕏 Search <ExternalLink size={8} aria-hidden="true" />
           </a>
         </div>
       </div>
@@ -183,11 +183,11 @@ export default function SocialFeed({ ticker }: SocialFeedProps) {
         <div className="flex items-center gap-3">
           <a href={xSearchUrl} target="_blank" rel="noopener noreferrer"
             className="text-[9px] font-body flex items-center gap-1" style={{ color: textMuted }}>
-            𝕏 ${ticker} <ExternalLink size={7} />
+            𝕏 ${ticker} <ExternalLink size={7} aria-hidden="true" />
           </a>
           <a href={stocktwitsUrl} target="_blank" rel="noopener noreferrer"
             className="text-[9px] font-body flex items-center gap-1" style={{ color: gold }}>
-            View all on StockTwits <ExternalLink size={7} />
+            View all on StockTwits <ExternalLink size={7} aria-hidden="true" />
           </a>
         </div>
       </div>

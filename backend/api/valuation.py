@@ -10,11 +10,13 @@ Endpoints:
 
 import json
 import logging
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from backend.models.schemas import APIResponse
-from backend.services.auth import get_current_user, CurrentUser
+
 from backend.config import get_settings
+from backend.models.schemas import APIResponse
+from backend.services.auth import CurrentUser, get_current_user
 
 logger = logging.getLogger("api.valuation")
 
@@ -46,7 +48,6 @@ async def compute_fair_value(
 
     # Build financial context for Claude
     income = body.financials.get("income_statement", [])
-    balance = body.financials.get("balance_sheet", [])
     cashflow = body.financials.get("cash_flow", [])
     fund = body.fundamentals
 

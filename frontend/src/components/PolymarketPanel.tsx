@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
 import {
-  TrendingUp, BarChart3, Clock, Search, Loader2,
-  ChevronDown, ChevronUp, Activity, Globe, AlertCircle,
+  TrendingUp, Clock, Search, Loader2,
+  ChevronDown, ChevronUp, Globe, AlertCircle,
 } from 'lucide-react';
+import { formatCompactCurrency } from '../lib/format';
 
 interface PolymarketMarket {
   question: string;
@@ -40,53 +41,6 @@ interface TickerMatch {
   events?: PolymarketEvent[];
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────
-
-function formatVolume(vol: number): string {
-  if (vol >= 1_000_000) return `$${(vol / 1_000_000).toFixed(1)}M`;
-  if (vol >= 1_000) return `$${(vol / 1_000).toFixed(0)}K`;
-  return `$${vol.toFixed(0)}`;
-}
-
-function confidenceLevel(market: PolymarketMarket): { level: string; tier: 'high' | 'medium' | 'low' } {
-  const vol = market.volume_24h || 0;
-  const liq = market.liquidity || 0;
-  if (vol > 100000 && liq > 50000) return { level: 'High confidence', tier: 'high' };
-  if (vol > 10000 && liq > 5000) return { level: 'Medium confidence', tier: 'medium' };
-  return { level: 'Low confidence', tier: 'low' };
-}
-
-function formatEndDate(dateStr: string): string {
-  if (!dateStr) return '';
-  try {
-    const d = new Date(dateStr);
-    const now = new Date();
-    const diff = d.getTime() - now.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    if (days < 0) return 'Ended';
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Tomorrow';
-    if (days < 30) return `${days}d left`;
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  } catch {
-    return '';
-  }
-}
-
-
-import ProbabilityGauge from './ProbabilityGauge';
-
-// ─── Probability Bar (larger version for panel) ────────────────────────────
-
-function ProbabilityBarLarge({
-  pct, gold, isDark,
-}: {
-  pct: number; gold: string; isDark: boolean;
-}) {
-  return <ProbabilityGauge pct={pct} size={64} strokeWidth={5} />;
-}
-
-
 // ─── Full Market Row ───────────────────────────────────────────────────────
 
 function FullMarketRow({
@@ -96,7 +50,7 @@ function FullMarketRow({
 }) {
   const yesPct = market.yes_price ? Math.round(market.yes_price * 100) : null;
   const vol = market.volume_24h || 0;
-  const volStr = vol >= 1_000_000 ? `$${(vol / 1_000_000).toFixed(1)}M` : vol >= 1000 ? `$${(vol / 1000).toFixed(0)}K` : `$${vol}`;
+  const volStr = formatCompactCurrency(vol);
   const endDate = market.end_date ? new Date(market.end_date) : null;
   const timeframe = endDate ? (endDate.getTime() - Date.now() < 7 * 86400000 ? 'Daily' : endDate.getTime() - Date.now() < 35 * 86400000 ? 'Monthly' : 'Long-term') : '';
   const greenColor = isDark ? '#34C759' : '#28A745';
@@ -163,6 +117,7 @@ function TickerGroup({
       style={{ background: surface, border: `0.5px solid ${border}` }}>
       <button
         onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
         className="w-full flex items-center justify-between px-4 py-3 transition-colors"
         style={{ borderBottom: expanded ? `0.5px solid ${border}` : 'none' }}
       >
@@ -175,15 +130,15 @@ function TickerGroup({
             {events.length > 0 ? `${events.length} event${events.length !== 1 ? 's' : ''}` : `${match.markets_found} market${match.markets_found !== 1 ? 's' : ''}`}
           </span>
         </div>
-        {expanded ? <ChevronUp size={14} style={{ color: textMuted }} />
-          : <ChevronDown size={14} style={{ color: textMuted }} />}
+        {expanded ? <ChevronUp size={14} style={{ color: textMuted }} aria-hidden="true" />
+          : <ChevronDown size={14} style={{ color: textMuted }} aria-hidden="true" />}
       </button>
       {expanded && (
         <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
           {/* Render grouped events first */}
           {events.map((evt, i) => {
             const vol = evt.total_volume || 0;
-            const volStr = vol >= 1_000_000 ? `$${(vol / 1_000_000).toFixed(1)}M` : vol >= 1000 ? `$${(vol / 1000).toFixed(0)}K` : `$${vol.toFixed(0)}`;
+            const volStr = formatCompactCurrency(vol);
             const endDate = evt.end_date ? new Date(evt.end_date) : null;
             const timeframe = endDate ? (endDate.getTime() - Date.now() < 7 * 86400000 ? 'Daily' : endDate.getTime() - Date.now() < 35 * 86400000 ? 'Monthly' : 'Long-term') : '';
 
@@ -377,13 +332,14 @@ export default function PolymarketPanel() {
             background: isDark ? '#151517' : '#FFFFFF',
             border: `0.5px solid ${isDark ? '#2A2A2D' : '#D0D0D0'}`,
           }}>
-          <Search size={14} style={{ color: textMuted }} />
+          <Search size={14} style={{ color: textMuted }} aria-hidden="true" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search markets — e.g. 'Fed rate cut', 'Bitcoin 200k', 'recession'"
+            aria-label="Search prediction markets"
             className="flex-1 text-sm font-body outline-none bg-transparent"
             style={{ color: isDark ? '#E8E6E1' : '#1A1A1D' }}
           />

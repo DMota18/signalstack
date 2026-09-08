@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
-import { TrendingUp, TrendingDown } from 'lucide-react';
 import { getLogoUrl, getBrandColor } from '../lib/brandColors';
+import { formatCurrency, formatPercent, formatNumber } from '../lib/format';
 
 type ChangeMode = 'unrealized' | 'day' | 'weight';
 
-export default function HoldingsTable({ holdings, onRemove }: { holdings: any[]; onRemove?: (ticker: string) => void }) {
+export default function HoldingsTable({ holdings, onRemove: _onRemove }: { holdings: any[]; onRemove?: (ticker: string) => void }) {
   const { isDark } = useTheme();
   const navigate = useNavigate();
   const [changeMode, setChangeMode] = useState<ChangeMode>('day');
@@ -50,7 +50,7 @@ export default function HoldingsTable({ holdings, onRemove }: { holdings: any[];
       {/* Toggle */}
       <div className="flex gap-1 mb-2">
         {modes.map((m) => (
-          <button key={m.value} onClick={() => setChangeMode(m.value)}
+          <button key={m.value} onClick={() => setChangeMode(m.value)} aria-pressed={changeMode === m.value}
             className="text-[10px] font-body px-2 py-0.5 rounded transition-colors"
             style={{
               background: changeMode === m.value ? `${gold}15` : 'transparent',
@@ -124,7 +124,7 @@ export default function HoldingsTable({ holdings, onRemove }: { holdings: any[];
             {/* Col 2: Price */}
             <div className="text-right">
               <span className="text-sm font-numeric font-semibold tabular-nums tracking-tight">
-                ${(h.current_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {formatCurrency(h.current_price || 0)}
               </span>
             </div>
 
@@ -137,11 +137,11 @@ export default function HoldingsTable({ holdings, onRemove }: { holdings: any[];
               )}
               <div>
                 <span className="text-xs font-numeric font-semibold tabular-nums block leading-tight" style={{ color: changeColor }}>
-                  {isWeight ? `${pct.toFixed(1)}%` : `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}
+                  {isWeight ? formatPercent(pct) : formatPercent(pct, { signed: true })}
                 </span>
                 {!isWeight && val !== 0 && (
                   <span className="text-[10px] font-numeric tabular-nums block leading-tight" style={{ color: changeColor, opacity: 0.65 }}>
-                    {val >= 0 ? '+' : '-'}${Math.abs(val).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    {(val >= 0 ? '+' : '-') + formatCurrency(Math.abs(val), 0)}
                   </span>
                 )}
               </div>
@@ -150,14 +150,14 @@ export default function HoldingsTable({ holdings, onRemove }: { holdings: any[];
             {/* Col 4: Market Value */}
             <div className="text-right">
               <span className="text-xs font-numeric font-medium tabular-nums" style={{ color: textMuted }}>
-                ${marketValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                {formatCurrency(marketValue, 0)}
               </span>
             </div>
 
             {/* Col 5: Shares — hidden on mobile */}
             <div className="text-right hidden lg:block">
               <span className="text-xs font-numeric tabular-nums" style={{ color: textMuted }}>
-                {(h.quantity || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                {formatNumber(h.quantity || 0, 4)}
               </span>
             </div>
 

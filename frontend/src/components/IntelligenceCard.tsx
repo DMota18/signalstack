@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../api/client';
 import { Zap, ChevronRight, Clock } from 'lucide-react';
+import { formatPercent } from '../lib/format';
 
 export default function IntelligenceCard() {
   const { isDark } = useTheme();
@@ -17,7 +18,7 @@ export default function IntelligenceCard() {
 
   useEffect(() => {
     api.getLatestIntelligence().then((res) => {
-      if (res.status === 'ok' && res.data && res.data.id) {
+      if (res.status === 'ok' && res.data && 'id' in res.data) {
         setLatest(res.data);
       }
       setLoading(false);
@@ -30,11 +31,6 @@ export default function IntelligenceCard() {
   const holdings = synthesis.per_holding_intelligence || [];
   const insights = synthesis.portfolio_level_insights || [];
   const signalCount = (latest.signals_used || []).length;
-
-  // Find the most notable holding (conflicting or strongest signal)
-  const notable = holdings.find((h: any) => h.net_signal === 'conflicting')
-    || holdings.find((h: any) => h.net_signal?.includes('bullish') || h.net_signal?.includes('bearish'))
-    || holdings[0];
 
   // Time ago
   const timeAgo = (dateStr: string) => {
@@ -77,7 +73,7 @@ export default function IntelligenceCard() {
               </p>
             </div>
           </div>
-          <ChevronRight size={16} style={{ color: textMuted }} />
+          <ChevronRight size={16} style={{ color: textMuted }} aria-hidden="true" />
         </div>
 
         {/* Top insight */}
@@ -94,14 +90,14 @@ export default function IntelligenceCard() {
               style={{ background: isDark ? '#0C0C0E' : '#F8F7F4' }}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-body font-medium">{h.ticker}</span>
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: signalColor(h.net_signal) }} />
+                <span className="w-1.5 h-1.5 rounded-full" aria-hidden="true" style={{ background: signalColor(h.net_signal) }} />
               </div>
               <p className="text-[10px] font-body" style={{ color: signalColor(h.net_signal) }}>
                 {(h.net_signal || 'neutral').replace(/_/g, ' ')}
               </p>
               {h.position_pct && (
                 <p className="text-[9px] font-body" style={{ color: textMuted }}>
-                  {h.position_pct.toFixed(1)}%
+                  {formatPercent(h.position_pct)}
                 </p>
               )}
             </div>

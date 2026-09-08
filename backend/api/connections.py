@@ -9,10 +9,11 @@ Manages the SnapTrade connection lifecycle:
 """
 
 from fastapi import APIRouter, Depends
+
 from backend.models.schemas import APIResponse
-from backend.services.auth import get_current_user, CurrentUser
-from backend.services.supabase import get_service_client, get_anon_client
+from backend.services.auth import CurrentUser, get_current_user
 from backend.services.snaptrade import SnapTradeService, sync_user_holdings
+from backend.services.supabase import get_anon_client, get_service_client
 
 router = APIRouter(prefix="/connections", tags=["connections"])
 
@@ -24,10 +25,10 @@ async def register_and_connect(
 ):
     """Register the user with SnapTrade (if not already) and return
     a Connection Portal URL where they can link their brokerage.
-    
+
     The user visits the returned URL in their browser, completes the
     OAuth flow with their brokerage, and is redirected back to the app.
-    
+
     Args:
         broker: Optional broker slug to skip selection (e.g. "robinhood", "fidelity")
     """
@@ -71,7 +72,7 @@ async def register_and_connect(
     # Use the app's origin as the redirect so the user lands back on Settings
     from backend.config import get_settings as _get_settings
     _settings = _get_settings()
-    redirect_base = "http://localhost:3000" if _settings.debug else "https://signalstack.app"
+    redirect_base = "http://localhost:3000" if _settings.debug else _settings.app_base_url
     redirect_url = f"{redirect_base}/app/settings?status=success"
 
     portal_result = await svc.get_connection_portal_url(
@@ -128,7 +129,7 @@ async def connection_callback(
     user: CurrentUser = Depends(get_current_user),
 ):
     """Called after the user completes the SnapTrade Connection Portal flow.
-    
+
     Fetches the newly connected accounts from SnapTrade and creates/updates
     the brokerage_connections records with real account data.
     """

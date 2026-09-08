@@ -8,8 +8,10 @@ Tools:
   get_fear_greed — Current market Fear & Greed index (0-100)
 """
 
-import httpx
 import logging
+
+import httpx
+
 from backend.tools.base import ToolResult, transient_error
 
 logger = logging.getLogger("tools.fear_greed")
@@ -42,11 +44,16 @@ async def get_fear_greed(limit: int = 7) -> dict:
         value = int(current.get("value", 50))
 
         # Classify
-        if value <= 20: classification = "Extreme Fear"
-        elif value <= 40: classification = "Fear"
-        elif value <= 60: classification = "Neutral"
-        elif value <= 80: classification = "Greed"
-        else: classification = "Extreme Greed"
+        if value <= 20:
+            classification = "Extreme Fear"
+        elif value <= 40:
+            classification = "Fear"
+        elif value <= 60:
+            classification = "Neutral"
+        elif value <= 80:
+            classification = "Greed"
+        else:
+            classification = "Extreme Greed"
 
         history = [
             {

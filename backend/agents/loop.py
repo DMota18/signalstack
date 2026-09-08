@@ -20,20 +20,18 @@ Three things we NEVER do:
 The correct termination signal is ALWAYS stop_reason.
 """
 
+import asyncio
 import json
-import time
 import logging
-from typing import Optional
-from datetime import datetime, timezone
 
 import httpx
 
 from backend.config import get_settings
-from backend.tools.registry import execute_tool
 from backend.services.hooks import (
-    pre_execution_hook,
     post_execution_hook,
+    pre_execution_hook,
 )
+from backend.tools.registry import execute_tool
 
 logger = logging.getLogger("agents.loop")
 
@@ -45,13 +43,13 @@ async def run_agent_loop(
     system_prompt: str,
     messages: list[dict],
     tools: list[dict],
-    user_context: Optional[dict] = None,
-    model: Optional[str] = None,
+    user_context: dict | None = None,
+    model: str | None = None,
     max_tokens: int = 4096,
-    tool_choice: Optional[dict] = None,
+    tool_choice: dict | None = None,
 ) -> dict:
     """Run the agentic loop until Claude emits stop_reason == 'end_turn'.
-    
+
     Args:
         system_prompt: System prompt for Claude
         messages: Conversation history (list of role/content dicts)
@@ -60,13 +58,15 @@ async def run_agent_loop(
         model: Claude model to use (defaults to config)
         max_tokens: Max tokens per response
         tool_choice: Optional tool_choice override for first iteration
-        
+
     Returns:
         {
             "text": str,           # Final text response (if any)
             "tool_results": [],    # All tool results collected during the loop
             "iterations": int,     # How many loop iterations ran
             "tokens_used": int,    # Total tokens consumed
+            "input_tokens": int,   # Input-side total (for accurate cost)
+            "output_tokens": int,  # Output-side total (for accurate cost)
             "stop_reason": str,    # Final stop reason
         }
     """
@@ -108,6 +108,8 @@ async def run_agent_loop(
                 "tool_results": all_tool_results,
                 "iterations": iteration,
                 "tokens_used": total_input_tokens + total_output_tokens,
+                "input_tokens": total_input_tokens,
+                "output_tokens": total_output_tokens,
                 "stop_reason": "error",
             }
 
@@ -131,6 +133,8 @@ async def run_agent_loop(
                 "tool_results": all_tool_results,
                 "iterations": iteration,
                 "tokens_used": total_input_tokens + total_output_tokens,
+                "input_tokens": total_input_tokens,
+                "output_tokens": total_output_tokens,
                 "stop_reason": "end_turn",
             }
 
@@ -234,6 +238,8 @@ async def run_agent_loop(
                 "tool_results": all_tool_results,
                 "iterations": iteration,
                 "tokens_used": total_input_tokens + total_output_tokens,
+                "input_tokens": total_input_tokens,
+                "output_tokens": total_output_tokens,
                 "stop_reason": stop_reason,
             }
 
@@ -244,6 +250,8 @@ async def run_agent_loop(
         "tool_results": all_tool_results,
         "iterations": iteration,
         "tokens_used": total_input_tokens + total_output_tokens,
+        "input_tokens": total_input_tokens,
+        "output_tokens": total_output_tokens,
         "stop_reason": "max_iterations",
     }
 
@@ -274,7 +282,6 @@ async def _call_claude_api(request_body: dict) -> dict:
                 # Rate limited — longer backoff for free tier
                 delay = 30 * (2 ** attempt)
                 logger.warning(f"Claude API 429, retrying in {delay}s (attempt {attempt + 1}/{retries})")
-                import asyncio
                 await asyncio.sleep(delay)
                 continue
 
@@ -282,7 +289,6 @@ async def _call_claude_api(request_body: dict) -> dict:
                 # Overloaded — back off longer
                 delay = 45 * (2 ** attempt)
                 logger.warning(f"Claude API 529 (overloaded), retrying in {delay}s")
-                import asyncio
                 await asyncio.sleep(delay)
                 continue
 

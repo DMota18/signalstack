@@ -1,10 +1,22 @@
-# Zelador Analytics (SignalStack)
+# SignalStack
 
-An AI-powered portfolio intelligence platform that monitors your holdings and delivers actionable research using Claude, prediction markets, insider filings, institutional flow, and macroeconomic indicators.
+[![CI](https://github.com/DMota18/signalstack/actions/workflows/ci.yml/badge.svg)](https://github.com/DMota18/signalstack/actions/workflows/ci.yml)
+
+**An AI system that reads your investment holdings and gives you a plain-English intelligence report on each one — pulling automatically from news, insider filings, big-investor holdings, prediction markets, and economic data.**
 
 Built with FastAPI, React, Supabase, and Claude's tool-use API.
 
-Status: Active development. Core features are fully functional including dashboard, holdings, markets feed and AI insights. Polymarket integration is currently partially implemented, and the insider agent is still in development. 
+> **Status:** Portfolio project — a complete, previously-deployed build, not a product with users and not currently running live. Core features (dashboard, holdings, markets feed, real-time AI intelligence) are fully functional. Two of the six signal agents are intentionally less complete: the **Polymarket** agent is partially implemented and the **Insider** agent is in development — both degrade gracefully and are reported as gaps in the output, never hidden. See [Known Limitations](#known-limitations--roadmap) and the [Engineering Retrospective](./RETROSPECTIVE.md).
+
+---
+
+## What it does
+
+You connect your brokerage holdings. For each position you hold, SignalStack gathers signals from several independent sources at once — news, company insiders, large funds, prediction markets, and the macro backdrop — then combines them into a single, readable report on that holding.
+
+It is **not financial advice.** The goal is to pull together as much real information as possible in one place so you can make your own decisions. A safe-language check runs over every output to keep it informational, not advisory — enforced in code, not left to the model.
+
+Reports can be delivered three ways: streamed live in the browser (with a progress bar as each source comes back), sent as an email digest, or pushed as a notification.
 
 ## Screenshots
 
@@ -26,32 +38,70 @@ Status: Active development. Core features are fully functional including dashboa
 **Explore — personalized AI investment ideas**
 ![Explore Ideas](screenshots/cropped/06_explore_ideas.png)
 
-## How It Works
+---
 
-Zelador Analytics runs a **hub-and-spoke agentic architecture** where a coordinator dispatches six specialist AI agents against your portfolio, synthesizes their findings, and delivers intelligence via email digest, push notification, or real-time streaming in the browser.
+## The six agents
 
-### The Intelligence Pipeline
+SignalStack runs six specialist agents, each responsible for one kind of signal. Each one only does its own job and only sees its own data, and each returns a structured summary the coordinator can combine.
 
-When intelligence is generated (on-demand or scheduled), the system:
+| Agent | What it does | Data sources |
+|-------|-------------|--------------|
+| **Sentiment** | Scores recent news tone per ticker on a bearish-to-bullish scale, weighting meaningful coverage over noise and flagging when a ticker has no coverage | Finnhub, NewsAPI |
+| **Prediction markets** | Finds active Polymarket markets tied to a holding (company, ticker, industry) and surfaces the crowd's real-money implied odds on events that could move the stock — *partially implemented* | Polymarket Gamma API |
+| **Insider** | Scans SEC Form 4 filings for *meaningful* insider activity — large open-market and cluster buys by executives — filtering out routine sales and option exercises — *in development* | SEC EDGAR (Form 4) |
+| **Institutional** | Reads quarterly 13F filings to track what major funds (Berkshire, Renaissance, Citadel, BlackRock) hold and are changing, noting 13F data runs 1–3 months stale | SEC EDGAR (13F) |
+| **Macro** | Maps relevant Fed/FRED indicators — rates, inflation, employment, sector series — onto the portfolio's actual exposures rather than dumping raw data | FRED |
+| **Profile** | Generates educational research ideas grounded in the user's stated interests, framed as "based on your interests," not recommendations. Powers the Explore screen | Claude synthesis |
 
-1. **Builds a fresh context snapshot** — pulls your current holdings, prices, allocation percentages, investor profile preferences, and upcoming earnings dates from Supabase.
+Agent maturity varies — the two flagged above are less complete than the rest. The [Engineering Retrospective](./RETROSPECTIVE.md) has the honest current state of each.
 
-2. **Dispatches 6 specialist subagents** sequentially, each with its own tool set and isolated context:
+---
 
-   | Agent | What It Does | Data Sources |
-   |-------|-------------|--------------|
-   | **Sentiment** | Scores news sentiment per ticker (-1.0 to 1.0), detects trend shifts | Finnhub, NewsAPI |
-   | **Polymarket** | Finds prediction market odds relevant to your holdings (earnings beats, macro events) | Polymarket Gamma API | Partially completed.
-   | **Insider** | Surfaces meaningful insider trades — cluster buying, large open-market purchases | SEC EDGAR (Form 4) | In development.
-   | **Institutional** | Tracks 13F filings from major funds (Berkshire, Renaissance, Bridgewater) | SEC EDGAR (13F) |
-   | **Macro** | Maps Fed rates, CPI, yield curve, unemployment to your specific holdings | FRED |
-   | **Profile** | Generates educational research ideas based on your interests and risk appetite | Claude synthesis |
+## Architecture
 
-3. **Synthesizes results** — the coordinator combines all six agent outputs into a single structured intelligence report with per-holding narratives, net signal scores, portfolio-level insights, and concentration warnings.
+A **hub-and-spoke** design: a coordinator sits in the middle, the six specialists are the spokes. The specialists gather; the coordinator combines.
 
-4. **Enforces compliance programmatically** — a hooks pipeline (not prompt instructions) blocks advice language ("buy", "sell", "you should"), injects the disclaimer, redacts PII, and normalizes timestamps.
+```mermaid
+flowchart TB
+    Browser["React PWA<br/>typed API client · React Query · SSE stream"]
+    Caddy["Caddy<br/>auto-HTTPS · security headers · CSP"]
+    API["FastAPI<br/>APIResponse envelope · JWT auth · per-tier rate limiting"]
+    Pipeline["Intelligence pipeline<br/>one event-generator core behind REST, SSE, and jobs"]
+    Coordinator["Coordinator<br/>dispatches sequentially, synthesizes via produce_synthesis"]
+    Subagents["6 isolated subagents<br/>Sentiment · Polymarket · Insider · Institutional · Macro · Profile"]
+    Hooks["Hooks pipeline<br/>pre-exec blocking · post-exec normalization/PII ·<br/>advice-language interceptor + reformulation loop"]
+    Tools["MCP-style tools<br/>4-category errors · scoped per agent"]
+    Celery["Celery beat + workers<br/>queues: intelligence · sync · monitor · maintenance"]
+    Redis[("Redis<br/>broker + results")]
+    Supabase[("Supabase<br/>Postgres · Auth · RLS")]
+    Claude["Claude API<br/>stop_reason-driven loop · cost caps · model fallback"]
+    Providers["Finnhub · Polymarket · FRED · SEC EDGAR · SnapTrade"]
+    Extras["Stripe · Resend · Web Push"]
 
-### The Agentic Loop
+    Browser --> Caddy --> API
+    API --> Pipeline
+    Celery --> Pipeline
+    Celery --- Redis
+    Pipeline --> Coordinator --> Subagents
+    Subagents --> Tools --> Providers
+    Coordinator --> Claude
+    Subagents --> Claude
+    Pipeline --> Hooks
+    Tools --> Hooks
+    API --- Supabase
+    Pipeline --- Supabase
+    API --- Extras
+```
+
+**Why hub-and-spoke instead of one big agent with all the tools?** Three reasons:
+
+- **Tool reliability.** When one agent has too many tools to choose from, it picks the wrong one more often. Each specialist carries only a handful of tools (4–5 max), so each stays sharp.
+- **Context isolation.** Each agent gets its own prompt and only its own data — no shared memory. The macro agent never sees the news agent's headlines. That keeps each agent predictable and independently testable.
+- **Clean combining.** Each specialist returns a small, fixed-shape JSON summary, so the coordinator combines six clean pieces instead of one sprawling transcript.
+
+**What's fixed vs. what the AI decides:** which agents run is a fixed list — all six run every time. The coordinator uses its own judgment only at the final combining step. Inside each agent, the model decides which of its own tools to call and in what order.
+
+### The agentic loop
 
 Each agent runs inside `run_agent_loop()`, which implements Claude's tool-use protocol:
 
@@ -61,192 +111,154 @@ Send request to Claude API with tools
   -> stop_reason == "end_turn"  -> return final output
 ```
 
-The loop is **model-driven** — Claude decides which tools to call and in what order. A 25-iteration safety cap exists as a backstop but is never the primary termination signal. Pre-execution hooks can block tool calls (e.g., gating features by subscription tier), and post-execution hooks normalize all tool outputs before they re-enter the conversation.
+The loop is **model-driven** — Claude decides which tools to call and in what order. A 25-iteration safety cap exists as a backstop but is never the primary termination signal. Pre-execution hooks can block tool calls (e.g., gating features by subscription tier); post-execution hooks normalize every tool output before it re-enters the conversation.
 
-### Cost Control
+### Scheduled work
 
-Every intelligence run tracks token usage and estimated cost. A per-user daily spend cap ($0.50 default) automatically:
-- Switches to the fallback model (Haiku) when the cap is approached
-- Serves cached intelligence when the cap is hit
-- Resets at midnight UTC
+Celery beat (all UTC — delivery respects each user's timezone via `zoneinfo`): daily digest scans hourly 4–10 PM, weekly report Sunday evenings, price monitor every 5 minutes in market hours, pre-earnings briefings twice daily, portfolio + Polymarket catalog syncs every 30 minutes.
 
-## Architecture
+---
 
-```
-Browser (React PWA)
-  |
-  |-- SSE stream (/intelligence/stream)
-  |-- REST API (/api/v1/*)
-  |
-Caddy (reverse proxy, auto-HTTPS)
-  |
-FastAPI (uvicorn)
-  |-- API routes (auth, portfolio, research, billing, etc.)
-  |-- Intelligence engine (coordinator + 6 subagents)
-  |-- Hooks pipeline (pre/post execution, output interception)
-  |
-Celery + Redis
-  |-- Daily digest (4-10 PM UTC, timezone-aware delivery)
-  |-- Weekly report (Sunday evenings)
-  |-- Price monitor (every 5 min during market hours)
-  |-- Pre-earnings briefings (8 AM & 4 PM ET)
-  |-- Portfolio sync (every 30 min, market hours)
-  |-- Polymarket catalog sync (every 30 min)
-  |
-Supabase (PostgreSQL + Auth + RLS)
-  |-- Row-level security on all user tables
-  |-- JWT verification server-side via PyJWT
-  |
-External APIs
-  |-- Claude (intelligence generation)
-  |-- Polymarket Gamma API (prediction markets)
-  |-- Finnhub (quotes, news, insider trades)
-  |-- FRED (macro indicators)
-  |-- SEC EDGAR (13F filings)
-  |-- SnapTrade (brokerage OAuth)
-  |-- Stripe (billing)
-  |-- Resend (email delivery)
-  |-- Web Push (VAPID notifications)
-```
+## Engineering decisions worth calling out
 
-## Tech Stack
+- **Hand-built tool-use loop on the raw API.** Rather than lean on a pre-built SDK, the request → tool-call → response cycle is built by hand, so the whole loop is understood and controllable end to end. The **only** valid termination signal is `stop_reason` — never natural-language parsing, never an arbitrary iteration count.
 
-**Backend:** Python 3.11, FastAPI, Celery, Redis, Supabase (PostgreSQL), yfinance
+- **Programmatic compliance, not prompt compliance.** Financial disclaimers, advice-language filtering, PII redaction, and concentration warnings are enforced by code hooks — never trusted to the model following instructions. The output interceptor scans every response for patterns like "I recommend" or "you should buy" and blocks it for reformulation. Because REST, SSE streaming, and scheduled jobs all share one pipeline core, no delivery path can skip it.
 
-**Frontend:** React 18, TypeScript, Tailwind CSS, Vite, Lightweight Charts, PWA with service worker
+- **Subagent isolation.** Each subagent runs with zero shared context — no access to the coordinator's history, no memory of other subagents. Every piece of context a subagent needs is passed explicitly in its prompt. This prevents cross-contamination and makes agent behavior independently testable.
 
-**AI:** Claude API (Anthropic) with structured tool use — hub-and-spoke coordinator pattern
+- **Cost is capped hard.** A per-user daily spend cap ($0.50/user/day default) plus a cached last-good report once the cap is hit bounds the worst case absolutely — a single user can't run up a large bill no matter what. In the 70–100% band the final synthesis call falls back to a cheaper model (Haiku) while the six subagents stay on the primary model (a partial lever — the bulk of the tokens are in the subagent fan-out); once the cap is hit it serves cached intelligence; everything resets at midnight UTC.
+
+- **Graceful degradation.** If one agent fails or times out, the run doesn't crash. The other agents' findings still come through and the report notes the missing piece explicitly.
+
+- **Structured JSON, not prose.** Subagents return fixed-shape JSON to the coordinator, not natural language — a subagent returning prose is treated as a failure, not silently accepted. This makes synthesis reliable and frontend rendering predictable.
+
+- **Live stream over a plain spinner.** A full report takes a few minutes, so the browser streams each agent's progress as it finishes — turning a long blank wait into a visible pipeline. Built on `fetch` + a `ReadableStream` rather than the browser's built-in `EventSource`, because the reports sit behind a login and the request needs to carry an auth header.
+
+---
+
+## Tech stack
+
+**Backend:** Python 3.11, FastAPI, Celery, Redis, Supabase (PostgreSQL with Row-Level Security), yfinance
+
+**Frontend:** React 18, TypeScript, Tailwind CSS, Vite, Lightweight Charts, PWA (vite-plugin-pwa + Workbox)
+
+**AI:** Claude API (Anthropic) with structured tool use — hand-built hub-and-spoke coordinator pattern, no SDK
 
 **Infrastructure:** Docker Compose, Caddy (auto-HTTPS via Let's Encrypt), AWS EC2
 
-## Backend Structure
+**Quality tooling:** pytest + ruff (backend), vitest + ESLint + Prettier (frontend), GitHub Actions CI (lint, tests, production build, and the migration chain applied against a real Postgres on every push)
+
+### Project structure
 
 ```
 backend/
-  agents/          # Coordinator, subagent definitions, agentic loop
-  api/             # FastAPI route handlers (22 modules)
-  jobs/            # Celery tasks, beat schedule, job tracker
-  middleware/      # Rate limiting (tier-based)
-  models/          # Pydantic schemas
-  services/        # Auth, Supabase client, email, push, cost control,
-                   #   SnapTrade encryption, Polymarket auto-tagger
-  tools/           # MCP-style tool implementations (Finnhub, FRED,
-                   #   Polymarket, SEC EDGAR, etc.)
-```
-
-### Key Design Decisions
-
-**Programmatic compliance, not prompt compliance.** Financial disclaimers, advice language filtering, PII redaction, and concentration warnings are enforced by code hooks — never trusted to the model following instructions. The output interceptor scans every response for patterns like "I recommend" or "you should buy" and blocks the response for reformulation.
-
-**Subagent isolation.** Each subagent runs with zero shared context — no access to the coordinator's conversation history, no memory of other subagents' outputs. Every piece of context a subagent needs is explicitly passed in its prompt. This prevents cross-contamination and makes agent behavior deterministic.
-
-**DB-first Polymarket integration.** A background job syncs all active markets from Polymarket's finance categories (`stocks`, `earnings`, `crypto`, `commodities`, `fed-rates`, `indices`, `ipos`, `forex`, `acquisitions`) every 30 minutes. Markets are auto-tagged to stock tickers via keyword rules. Research pages and the prediction markets panel do fast DB lookups instead of live API searches.
-
-**Structured JSON, not prose.** Subagents return structured JSON back to the coordinator, not natural language. This makes synthesis reliable and the frontend rendering predictable.
-
-## Frontend Structure
-
-```
+  agents/       # Coordinator, subagent definitions, agentic loop
+  api/          # FastAPI route handlers
+  jobs/         # Celery tasks, beat schedule, job tracker
+  middleware/   # Tier-based rate limiting
+  models/       # Pydantic schemas
+  services/     # Auth, Supabase client, email, push, cost control,
+                #   SnapTrade encryption, Polymarket auto-tagger, hooks
+  tools/        # MCP-style tool implementations (Finnhub, FRED,
+                #   Polymarket, SEC EDGAR, etc.)
 frontend/src/
-  api/             # Centralized API client with JWT auto-refresh
-  components/      # Reusable UI (PriceChart, PolymarketPanel,
-                   #   OnboardingModal, IntelligenceProgress, etc.)
-  hooks/           # useAuth, useTheme, useIntelligenceStream
-  pages/           # Dashboard, Research, Earnings, Explore,
-                   #   Settings, Landing, Public Research
+  api/          # Centralized typed API client with JWT auto-refresh
+  components/   # Reusable UI (charts, panels, onboarding, progress)
+  hooks/        # useAuth, useTheme, useIntelligenceStream
+  pages/        # Dashboard, Research, Explore, Settings, Landing
+migrations/     # SQL schema chain (001–004), reproducible from clone
+tests/          # Backend suites by domain
 ```
 
-### Real-Time Intelligence Streaming
+---
 
-When a user triggers intelligence generation, the frontend connects via SSE (Server-Sent Events) using `fetch()` + `ReadableStream` (not `EventSource`, which can't send auth headers). The stream emits:
+## Running it
 
-- `agent_start` — agent name and index (drives the progress UI)
-- `agent_done` — agent status, duration, errors
-- `complete` — final synthesis with per-holding narratives and signals
-- `error` — failure details
+**This is a configured application, not a zero-config demo.** To actually run it you need real credentials — a Supabase (Postgres) project, an Anthropic API key, a Redis instance, and the external data-provider keys the agents use. The only thing that runs with no setup is the [test suite](#running-tests), which mocks every external service.
 
-The UI shows a live progress bar with agent-by-agent status updates as each specialist completes its analysis.
-
-## Scheduled Jobs
-
-| Job | Schedule | Purpose |
-|-----|----------|---------|
-| Daily Digest | Hourly 4-10 PM UTC | Delivers intelligence at each user's local 5 PM |
-| Weekly Report | Sundays 6-11 PM UTC | Full portfolio review for the week |
-| Price Monitor | Every 5 min (market hours) | "Why is this moving?" alerts on >3% swings |
-| Pre-Earnings | 8 AM & 4 PM ET | Briefings for holdings with earnings in 5 days |
-| Portfolio Sync | Every 30 min (market hours) | Refreshes brokerage holdings via SnapTrade |
-| Polymarket Sync | Every 30 min | Updates prediction market catalog from Polymarket |
-
-## Research Pages
-
-Each ticker gets a full research page (`/app/research/NVDA`) with:
-
-- **Price chart** — Lightweight Charts with 7 timeframes (1D to 5Y), candlestick/area toggle, SMA 20/50 overlays, volume, high/low markers
-- **Fundamentals** — P/E, market cap, 52-week range, dividend yield, analyst recommendations
-- **Prediction markets** — Ticker-specific and macro Polymarket odds with probability bars
-- **Financial statements** — Income, balance sheet, cash flow (quarterly)
-- **Institutional holders** — Top 10 funds by position size
-- **Similar stocks** — Sector/industry peers
-- **News** — Recent headlines with sentiment scoring
-
-Public research pages (`/research/NVDA`) are available without authentication for SEO, with OG image generation for social sharing.
-
-## Billing
-
-Two tiers: **Free** and **Pro** ($15/month via Stripe).
-
-- Free: 20 requests/min, daily intelligence, basic research
-- Pro: 100 requests/min, real-time alerts, weekly reports, pre-earnings briefings
-
-Stripe Checkout handles payment, webhooks manage tier transitions, and referral codes provide credits on upgrade.
-
-## Security
-
-- Supabase Row-Level Security on all user tables
-- JWT verification server-side via PyJWT
-- SnapTrade brokerage tokens encrypted with Fernet before storage
-- Caddy security headers (HSTS, CSP, X-Frame-Options)
-- UFW firewall + fail2ban on EC2
-- Non-root Docker user
-- Rate limiting per user tier
-- Stripe webhook signature verification
-
-## Running Locally
+**Step 0 — create your `.env` (required):** copy `.env.example` to `.env` and fill in the values. Every run path below reads it, and `docker compose` in particular declares `env_file: .env` — **without a `.env` file present, `docker compose up` exits immediately** with an "env file not found" error.
 
 ```bash
-# Backend
-cd backend
-pip install -r requirements.txt
+cp .env.example .env      # then fill in Supabase, Anthropic, Redis + provider keys
+```
+
+Manual (four processes):
+
+```bash
+# 1. Database — apply migrations/001..004 in order in the Supabase SQL editor.
+#    Validate the chain locally against a throwaway Postgres first:
+scripts/validate_migrations.sh
+
+# 2. Backend API
+pip install -r backend/requirements.txt
 uvicorn backend.main:app --reload --port 8000
 
-# Frontend
+# 3. Frontend
 cd frontend
 npm install
 npm run dev
 
-# Workers
+# 4. Background workers (separate terminals)
 celery -A backend.jobs.celery_app worker --loglevel=info
-celery -A backend.jobs.celery_app beat --loglevel=info
+celery -A backend.jobs.celery_app beat   --loglevel=info
 ```
 
-Requires `.env` with Supabase, Anthropic, and Redis credentials at minimum.
-
-## Deploying
+Or bring up the whole backend stack (API + worker + beat + Redis) with Docker Compose — this reads `.env` (Step 0) and fails without it:
 
 ```bash
-ssh ubuntu@<ec2-ip>
+docker compose up --build
+```
+
+### Running tests
+
+```bash
+# Backend — mocks all external APIs, needs no .env
+#   (fake config is injected by tests/conftest.py)
+pip install -r backend/requirements.txt -r requirements-dev.txt
+pytest
+
+# Frontend — API client auth/refresh contract + SSE parsing
+cd frontend && npm test
+```
+
+CI runs both suites, lint on both sides, the production build, and applies the full migration chain against a real Postgres on every push.
+
+### Deploying
+
+```bash
+ssh ubuntu@<host>
 cd ~/signalstack
-# Fill .env with production values
+# Fill .env with production values (including DOMAIN)
 ./deploy.sh
 ```
 
-`deploy.sh` installs Docker, configures the firewall, builds the frontend, and launches the full stack via `docker-compose.prod.yml` (Caddy + API + Celery worker + Celery beat + Redis).
+`deploy.sh` installs Docker, configures the firewall (UFW + fail2ban), builds the frontend, and launches the full stack via `docker-compose.prod.yml` (Caddy + API + Celery worker + Celery beat + Redis). Every public URL — CORS, email links, SEO/OG tags, OAuth redirects — is derived from the single `DOMAIN` variable, so the app is not tied to any one hostname.
 
-## File Counts
+---
 
-- **65** Python modules (backend)
-- **41** React components/pages (frontend)
-- **13** Celery tasks
-- **6** specialist AI agents
-- **10** external API integrations
+## Security
+
+- Supabase Row-Level Security on all user tables — users see only their own rows
+- JWT verified server-side via PyJWT
+- SnapTrade brokerage tokens encrypted with Fernet before storage — the database stores ciphertext only; tokens are never logged and never passed to Claude
+- Caddy security headers (HSTS, CSP, X-Frame-Options)
+- UFW firewall + fail2ban, non-root Docker user
+- Per-tier rate limiting; Stripe webhook signature verification
+
+## Known Limitations & Roadmap
+
+Honest state of the edges — these are deliberate scoping decisions, not surprises:
+
+- **Insider agent** is still in development (SEC EDGAR Form 4 parsing); **Polymarket agent** is partially implemented — both degrade gracefully and are reported as gaps in the synthesis, never hidden.
+- **Rate limiting** is an in-process sliding window — correct per instance, but multi-instance deployment would move the counters to Redis.
+- **Frontend `any` reduction is ongoing:** the API client and portfolio pages are fully typed; remaining usages are tracked as ESLint warnings rather than suppressed, so the debt stays visible.
+- **React Query** is adopted on the portfolio pages; remaining pages migrate incrementally as they're touched.
+- **Offline mode** serves the precached app shell and last-cached data; an explicit "data may be stale" banner is on the roadmap.
+- **Prompt caching** on the Case Facts block across the six-agent fan-out is the next obvious Claude cost win.
+
+The full deep-dive — where the running code diverges from the original design, which of those are deliberate trade-offs and which were bugs, and what I'd build differently next — lives in the **[Engineering Retrospective](./RETROSPECTIVE.md)**.
+
+---
+
+**Repo:** https://github.com/DMota18/signalstack

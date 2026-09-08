@@ -3,6 +3,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { getBrandColor } from '../lib/brandColors';
+import { formatCompactCurrency, formatPercent } from '../lib/format';
 
 interface PortfolioDonutProps {
   holdings: any[];
@@ -37,12 +38,6 @@ const CAP_COLORS: Record<string, { dark: string; light: string }> = {
   'Small Cap': { dark: '#FF9500', light: '#E08A00' },
   Unknown: { dark: '#8A8A8D', light: '#6A6A6D' },
 };
-
-function fmtValue(val: number): string {
-  if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M`;
-  if (val >= 1000) return `$${(val / 1000).toFixed(1)}K`;
-  return `$${val.toFixed(0)}`;
-}
 
 function classifySecurityType(h: any): string {
   const type = (h.security_type || '').toLowerCase();
@@ -163,7 +158,6 @@ function classifySector(h: any): string {
 }
 
 function classifyMarketCap(h: any): string {
-  const mv = h.market_value || 0;
   const price = h.current_price || 0;
   // Rough estimate: if the user holds it and the price is high, assume large/mega cap
   // This is a heuristic since we don't have actual market cap per holding here
@@ -308,7 +302,7 @@ export default function PortfolioDonut({ holdings }: PortfolioDonutProps) {
         }}>
         <p className="text-xs font-body font-medium">{d.label}</p>
         <p className="text-xs font-numeric" style={{ color: gold }}>
-          {fmtValue(d.value)} ({d.pct.toFixed(1)}%)
+          {formatCompactCurrency(d.value)} ({formatPercent(d.pct)})
         </p>
       </div>
     );
@@ -326,7 +320,7 @@ export default function PortfolioDonut({ holdings }: PortfolioDonutProps) {
       {/* View toggle */}
       <div className="flex gap-1 mb-4">
         {views.map((v) => (
-          <button key={v.value} onClick={() => setView(v.value)}
+          <button key={v.value} onClick={() => setView(v.value)} aria-pressed={view === v.value}
             className="text-[10px] font-body px-2.5 py-1 rounded-md transition-colors"
             style={{
               background: view === v.value ? `${gold}15` : 'transparent',
@@ -371,7 +365,7 @@ export default function PortfolioDonut({ holdings }: PortfolioDonutProps) {
           {/* Center label */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <p className="font-numeric text-sm font-medium" style={{ color: gold }}>
-              {fmtValue(totalValue)}
+              {formatCompactCurrency(totalValue)}
             </p>
             <p className="text-[9px] font-body" style={{ color: textMuted }}>Total</p>
           </div>
@@ -386,11 +380,11 @@ export default function PortfolioDonut({ holdings }: PortfolioDonutProps) {
               className="flex items-center gap-2 text-left transition-opacity hover:opacity-70"
               style={{ cursor: isClickable(d) ? 'pointer' : 'default' }}
             >
-              <span className="w-2.5 h-2.5 rounded-sm shrink-0"
+              <span className="w-2.5 h-2.5 rounded-sm shrink-0" aria-hidden="true"
                 style={{ background: getColor(d, i) }} />
               <span className="text-[11px] font-body truncate">{d.label}</span>
               <span className="text-[10px] font-numeric ml-auto" style={{ color: textMuted }}>
-                {d.pct.toFixed(1)}%
+                {formatPercent(d.pct)}
               </span>
             </button>
           ))}

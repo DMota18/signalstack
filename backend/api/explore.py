@@ -15,14 +15,15 @@ Endpoints:
 
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from backend.models.schemas import APIResponse
-from backend.services.auth import get_current_user, CurrentUser
-from backend.services.supabase import get_anon_client, get_service_client
+
 from backend.config import get_settings
+from backend.models.schemas import APIResponse
+from backend.services.auth import CurrentUser, get_current_user
+from backend.services.supabase import get_anon_client, get_service_client
 
 logger = logging.getLogger("api.explore")
 
@@ -284,10 +285,6 @@ async def generate_ideas(
         for h in holdings[:15]
     )
 
-    # Portfolio summary stats
-    total_value = sum(h.get("current_price", 0) * 1 for h in holdings)  # approximate
-    sectors = set(h.get("security_type", "equity") for h in holdings)
-
     user_msg = f"""CATEGORY: {cat_def['label']} — {cat_def['description']}
 
 USER PORTFOLIO ({len(holdings)} positions):
@@ -359,7 +356,7 @@ Return ONLY the JSON object with "ideas" array and "category_insight" string."""
         "body_json": {"ideas": ideas, "category_insight": category_insight, "category": category},
         "related_tickers": [i.get("ticker", "") for i in ideas if i.get("ticker")],
         "signals_used": ["profile", category],
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
     await db_service.insert(table="alert_history", data=alert_data)
